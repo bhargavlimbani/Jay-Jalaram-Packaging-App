@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'screens/login_screen.dart';
+import 'screens/register_screen.dart';
+import 'screens/forgot_password_screen.dart';
 
 void main() {
   runApp(MyApp());
@@ -10,7 +12,14 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      home: LoginScreen(),
+
+      initialRoute: "/login",
+
+      routes: {
+        "/login": (context) => LoginScreen(),
+        "/register": (context) => RegisterScreen(),
+        "/forgot": (context) => ForgotPasswordScreen(),
+      },
     );
   }
 }

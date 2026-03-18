@@ -9,7 +9,6 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-
   TextEditingController emailController = TextEditingController();
   TextEditingController passwordController = TextEditingController();
 
@@ -29,7 +28,6 @@ class _LoginScreenState extends State<LoginScreen> {
     var data = await ApiService.login(email, password);
 
     if (data["status"] == "success") {
-
       var user = data["user"];
 
       if (user["role"] == "admin") {
@@ -43,7 +41,6 @@ class _LoginScreenState extends State<LoginScreen> {
           MaterialPageRoute(builder: (context) => CustomerScreen()),
         );
       }
-
     } else {
       setState(() {
         errorMessage = data["message"];
@@ -59,7 +56,6 @@ class _LoginScreenState extends State<LoginScreen> {
         padding: EdgeInsets.all(20),
         child: Column(
           children: [
-
             TextField(
               controller: emailController,
               decoration: InputDecoration(labelText: "Email"),
@@ -73,14 +69,23 @@ class _LoginScreenState extends State<LoginScreen> {
 
             SizedBox(height: 20),
 
-            ElevatedButton(
-              onPressed: login,
-              child: Text("Login"),
+            ElevatedButton(onPressed: login, child: Text("Login")),
+            TextButton(
+              onPressed: () {
+                Navigator.pushNamed(context, "/forgot");
+              },
+              child: Text("Forgot Password"),
+            ),
+
+            TextButton(
+              onPressed: () {
+                Navigator.pushNamed(context, "/register");
+              },
+              child: Text("Don't have an account? Sign Up"),
             ),
 
             if (errorMessage.isNotEmpty)
-              Text(errorMessage, style: TextStyle(color: Colors.red))
-
+              Text(errorMessage, style: TextStyle(color: Colors.red)),
           ],
         ),
       ),
