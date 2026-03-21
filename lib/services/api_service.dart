@@ -77,11 +77,13 @@ class ApiService {
     return jsonDecode(res.body);
   }
 
-  static Future<void> placeOrder(List items) async {
-    await http.post(
+  static Future<Map<String, dynamic>> placeOrder(List items) async {
+    var res = await http.post(
       Uri.parse("${AppConstants.baseUrl}/orders/place_order.php"),
       headers: {"Content-Type": "application/json"},
       body: jsonEncode({"items": items}),
     );
+
+    return jsonDecode(res.body);
   }
 }
