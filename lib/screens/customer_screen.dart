@@ -18,6 +18,8 @@ class _CustomerScreenState extends State<CustomerScreen> {
   Map<int, TextEditingController> qtyControllers = {};
 
   String message = "";
+  String search = "";
+  String selectedCategory = "";
 
   @override
   void initState() {
@@ -29,16 +31,12 @@ class _CustomerScreenState extends State<CustomerScreen> {
   // ================= FETCH =================
   void fetchProducts() async {
     var data = await ApiService.getProducts();
-    setState(() {
-      products = data;
-    });
+    setState(() => products = data);
   }
 
   void fetchOrders() async {
     var data = await ApiService.getOrders();
-    setState(() {
-      orders = data;
-    });
+    setState(() => orders = data);
   }
 
   // ================= IMAGE =================
@@ -49,9 +47,8 @@ class _CustomerScreenState extends State<CustomerScreen> {
 
       return Image.memory(
         bytes,
-        height: 100,
-        width: double.infinity,
         fit: BoxFit.cover,
+        width: double.infinity,
       );
     } catch (e) {
       return Icon(Icons.image_not_supported, size: 80);
@@ -60,38 +57,65 @@ class _CustomerScreenState extends State<CustomerScreen> {
 
   // ================= CART =================
   void addToCart(product, int qty) {
-    int productId = int.parse(product["id"].toString());
-
     setState(() {
       cartItems.add({
-        "product_id": productId,
+        "product_id": product["id"],
         "name": product["name"],
         "price": double.parse(product["price"].toString()),
         "qty": qty,
       });
 
-      message = "${product["name"]} added to cart";
+      message = "${product["name"]} added";
     });
   }
 
   void placeOrder() async {
     var res = await ApiService.placeOrder(cartItems);
 
-    print("ORDER RESPONSE: $res");
-
     setState(() {
       cartItems.clear();
-      message = res["message"] ?? "Order placed";
+      message = res["message"];
       selectedIndex = 1;
     });
 
     fetchOrders();
   }
 
+  // ================= CATEGORY BUTTON =================
+  Widget categoryButton(String title, String value) {
+    return Padding(
+      padding: EdgeInsets.symmetric(horizontal: 5),
+      child: ElevatedButton(
+        style: ElevatedButton.styleFrom(
+          backgroundColor:
+              selectedCategory == value ? Colors.teal : Colors.grey[300],
+        ),
+        onPressed: () {
+          setState(() {
+            selectedCategory = value;
+          });
+        },
+        child: Text(title),
+      ),
+    );
+  }
+
   // ================= HOME =================
   Widget homePage() {
+    var filteredProducts = products.where((p) {
+      bool matchSearch =
+          p["name"].toLowerCase().contains(search.toLowerCase());
+
+      bool matchCategory =
+          selectedCategory == "" || p["box_type"] == selectedCategory;
+
+      return matchSearch && matchCategory;
+    }).toList();
+
     return Column(
       children: [
+
+        // MESSAGE
         if (message.isNotEmpty)
           Container(
             padding: EdgeInsets.all(10),
@@ -100,94 +124,108 @@ class _CustomerScreenState extends State<CustomerScreen> {
             child: Text(message),
           ),
 
+        // SEARCH
         Padding(
           padding: EdgeInsets.all(10),
-          child: Text(
-            "Products",
-            style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+          child: TextField(
+            decoration: InputDecoration(
+              hintText: "Search boxes...",
+              prefixIcon: Icon(Icons.search),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(20),
+              ),
+            ),
+            onChanged: (value) {
+              setState(() => search = value);
+            },
           ),
         ),
 
+        // CATEGORY
+        SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            children: [
+              categoryButton("All", ""),
+              categoryButton("Carton", "carton-box"),
+              categoryButton("Corrugated", "corrugated-box"),
+              categoryButton("Duplex", "duplex-box"),
+            ],
+          ),
+        ),
+
+        SizedBox(height: 10),
+
+        // PRODUCTS
         Expanded(
           child: GridView.builder(
             padding: EdgeInsets.all(10),
             gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: 2,
-              childAspectRatio: 0.55, // 🔥 FIX OVERFLOW
+              childAspectRatio: 0.60,
               crossAxisSpacing: 10,
               mainAxisSpacing: 10,
             ),
-            itemCount: products.length,
+            itemCount: filteredProducts.length,
             itemBuilder: (context, index) {
-              var product = products[index];
+              var product = filteredProducts[index];
               int productId = int.parse(product["id"].toString());
 
               qtyControllers.putIfAbsent(
-                productId,
-                () => TextEditingController(text: "1"),
-              );
+                  productId, () => TextEditingController(text: "1"));
 
               return Card(
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(15),
-                ),
-                elevation: 3,
+                    borderRadius: BorderRadius.circular(20)),
+                elevation: 5,
                 child: Padding(
                   padding: EdgeInsets.all(10),
-                  child: SingleChildScrollView(
-                    // 🔥 FIX OVERFLOW
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // IMAGE
-                        product["image_data"] != null &&
-                                product["image_data"] != ""
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+
+                      Expanded(
+                        child: product["image_data"] != null
                             ? showImage(product["image_data"])
-                            : Icon(Icons.image, size: 80),
+                            : Icon(Icons.image),
+                      ),
 
-                        SizedBox(height: 5),
+                      SizedBox(height: 5),
 
-                        Text(
-                          product["name"],
-                          style: TextStyle(
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                          ),
+                      Text(product["name"],
+                          style: TextStyle(fontWeight: FontWeight.bold)),
+
+                      Text("₹${product["price"]}"),
+
+                      SizedBox(height: 5),
+
+                      TextField(
+                        controller: qtyControllers[productId],
+                        keyboardType: TextInputType.number,
+                        decoration: InputDecoration(
+                          hintText: "Qty",
+                          isDense: true,
+                          border: OutlineInputBorder(),
                         ),
+                      ),
 
-                        Text("₹${product["price"]}"),
-                        Text("Stock: ${product["stock"]}"),
+                      SizedBox(height: 5),
 
-                        SizedBox(height: 5),
-
-                        TextField(
-                          controller: qtyControllers[productId],
-                          keyboardType: TextInputType.number,
-                          decoration: InputDecoration(
-                            hintText: "Qty",
-                            isDense: true,
-                            border: OutlineInputBorder(),
-                          ),
+                      ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.teal,
+                          minimumSize: Size(double.infinity, 40),
                         ),
+                        onPressed: () {
+                          int qty = int.tryParse(
+                                  qtyControllers[productId]!.text) ??
+                              1;
 
-                        SizedBox(height: 5),
-
-                        ElevatedButton(
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.teal,
-                            minimumSize: Size(double.infinity, 40),
-                          ),
-                          onPressed: () {
-                            int qty =
-                                int.tryParse(qtyControllers[productId]!.text) ??
-                                1;
-
-                            addToCart(product, qty);
-                          },
-                          child: Text("Add"),
-                        ),
-                      ],
-                    ),
+                          addToCart(product, qty);
+                        },
+                        child: Text("Order Box"),
+                      ),
+                    ],
                   ),
                 ),
               );
@@ -225,10 +263,8 @@ class _CustomerScreenState extends State<CustomerScreen> {
 
         Padding(
           padding: EdgeInsets.all(10),
-          child: Text(
-            "Total: ₹$total",
-            style: TextStyle(fontWeight: FontWeight.bold),
-          ),
+          child: Text("Total: ₹$total",
+              style: TextStyle(fontWeight: FontWeight.bold)),
         ),
 
         ElevatedButton(
@@ -265,22 +301,10 @@ class _CustomerScreenState extends State<CustomerScreen> {
           TextField(decoration: InputDecoration(labelText: "Name")),
           TextField(decoration: InputDecoration(labelText: "Phone")),
           TextField(decoration: InputDecoration(labelText: "Address")),
-
           SizedBox(height: 20),
-
+          ElevatedButton(onPressed: () {}, child: Text("Update Profile")),
           ElevatedButton(
-            onPressed: () {
-              setState(() {
-                message = "Profile updated";
-              });
-            },
-            child: Text("Update Profile"),
-          ),
-
-          ElevatedButton(
-            onPressed: () {
-              Navigator.pushNamed(context, "/login");
-            },
+            onPressed: () => Navigator.pushNamed(context, "/login"),
             child: Text("Logout"),
           ),
         ],
@@ -307,26 +331,22 @@ class _CustomerScreenState extends State<CustomerScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text("Hello Customer"),
-        backgroundColor: Colors.teal,
-      ),
+      appBar:
+          AppBar(title: Text("Hello Customer"), backgroundColor: Colors.teal),
       body: getPage(),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: selectedIndex,
+        onTap: (i) => setState(() => selectedIndex = i),
+        backgroundColor: Colors.white,
         selectedItemColor: Colors.teal,
-        onTap: (index) {
-          setState(() {
-            selectedIndex = index;
-          });
-        },
+        unselectedItemColor: Colors.grey,
+        showUnselectedLabels: true,
+        type: BottomNavigationBarType.fixed,
         items: [
           BottomNavigationBarItem(icon: Icon(Icons.home), label: "Home"),
-          BottomNavigationBarItem(icon: Icon(Icons.history), label: "Orders"),
+          BottomNavigationBarItem(icon: Icon(Icons.list), label: "Orders"),
           BottomNavigationBarItem(
-            icon: Icon(Icons.shopping_cart),
-            label: "Cart",
-          ),
+              icon: Icon(Icons.shopping_cart), label: "Cart"),
           BottomNavigationBarItem(icon: Icon(Icons.person), label: "Profile"),
         ],
       ),

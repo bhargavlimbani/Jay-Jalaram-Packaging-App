@@ -8,7 +8,6 @@ class AdminScreen extends StatefulWidget {
 }
 
 class _AdminScreenState extends State<AdminScreen> {
-
   int selectedIndex = 0;
 
   List orders = [];
@@ -68,9 +67,10 @@ class _AdminScreenState extends State<AdminScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-
-                Text("Order #${o["id"]}",
-                    style: TextStyle(fontWeight: FontWeight.bold)),
+                Text(
+                  "Order #${o["id"]}",
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
 
                 Text("Customer: ${o["customer_name"]}"),
                 Text("Total: ₹${o["total_price"]}"),
@@ -90,7 +90,7 @@ class _AdminScreenState extends State<AdminScreen> {
                       child: Text("Reject"),
                     ),
                   ],
-                )
+                ),
               ],
             ),
           ),
@@ -106,10 +106,7 @@ class _AdminScreenState extends State<AdminScreen> {
       itemBuilder: (context, i) {
         var c = customers[i];
 
-        return ListTile(
-          title: Text(c["name"]),
-          subtitle: Text(c["email"]),
-        );
+        return ListTile(title: Text(c["name"]), subtitle: Text(c["email"]));
       },
     );
   }
@@ -118,7 +115,6 @@ class _AdminScreenState extends State<AdminScreen> {
   Widget productsPage() {
     return Column(
       children: [
-
         ElevatedButton(
           onPressed: () {
             Navigator.pushNamed(context, "/addProduct");
@@ -139,7 +135,6 @@ class _AdminScreenState extends State<AdminScreen> {
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-
                       IconButton(
                         icon: Icon(Icons.edit),
                         onPressed: () {
@@ -161,7 +156,7 @@ class _AdminScreenState extends State<AdminScreen> {
               );
             },
           ),
-        )
+        ),
       ],
     );
   }
@@ -175,21 +170,17 @@ class _AdminScreenState extends State<AdminScreen> {
   Widget profilePage() {
     return Column(
       children: [
-
         TextField(decoration: InputDecoration(labelText: "Name")),
         TextField(decoration: InputDecoration(labelText: "Email")),
 
-        ElevatedButton(
-          onPressed: () {},
-          child: Text("Update Profile"),
-        ),
+        ElevatedButton(onPressed: () {}, child: Text("Update Profile")),
 
         ElevatedButton(
           onPressed: () {
             Navigator.pushReplacementNamed(context, "/login");
           },
           child: Text("Logout"),
-        )
+        ),
       ],
     );
   }
@@ -218,25 +209,32 @@ class _AdminScreenState extends State<AdminScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text("Admin Panel"),
-        backgroundColor: Colors.teal,
-      ),
+      appBar: AppBar(title: Text("Admin Panel"), backgroundColor: Colors.teal),
 
       body: getPage(),
-
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: selectedIndex,
-        selectedItemColor: Colors.teal,
-        onTap: (i) {
+        onTap: (index) {
           setState(() {
-            selectedIndex = i;
+            selectedIndex = index;
           });
         },
+
+        backgroundColor: Colors.white, // 🔥 important
+
+        selectedItemColor: Colors.teal, // active color
+        unselectedItemColor: Colors.grey, // inactive color
+
+        showUnselectedLabels: true, // 🔥 show all labels
+
+        type: BottomNavigationBarType.fixed,
         items: [
           BottomNavigationBarItem(icon: Icon(Icons.people), label: "Customers"),
           BottomNavigationBarItem(icon: Icon(Icons.list), label: "Orders"),
-          BottomNavigationBarItem(icon: Icon(Icons.inventory), label: "Products"),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.inventory),
+            label: "Products",
+          ),
           BottomNavigationBarItem(icon: Icon(Icons.receipt), label: "Invoice"),
           BottomNavigationBarItem(icon: Icon(Icons.person), label: "Profile"),
         ],
