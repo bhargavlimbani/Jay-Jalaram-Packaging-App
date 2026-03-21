@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../services/api_service.dart';
 import 'customer_screen.dart';
 import 'admin_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class LoginScreen extends StatefulWidget {
   @override
@@ -30,25 +31,31 @@ class _LoginScreenState extends State<LoginScreen> {
 
     var data = await ApiService.login(email, password);
 
-    if (data["status"] == "success") {
-      var user = data["user"];
+if (data["status"] == "success") {
+  var user = data["user"];
 
-      if (user["role"] == "admin") {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => AdminScreen()),
-        );
-      } else {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => CustomerScreen()),
-        );
-      }
-    } else {
-      setState(() {
-        errorMessage = data["message"];
-      });
-    }
+  // 🔥 SAVE USER DATA
+  final prefs = await SharedPreferences.getInstance();
+  await prefs.setString("name", user["name"]);
+  await prefs.setString("email", user["email"]);
+  await prefs.setString("phone", user["phone"] ?? "");
+
+  if (user["role"] == "admin") {
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (context) => AdminScreen()),
+    );
+  } else {
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(builder: (context) => CustomerScreen()),
+    );
+  }
+} else {
+  setState(() {
+    errorMessage = data["message"] ?? "Login failed";
+  }); 
+}
   }
 
   Widget customInput({

@@ -1,4 +1,4 @@
-import 'dart:convert';
+﻿import 'dart:convert';
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
@@ -67,7 +67,7 @@ class _CustomerScreenState extends State<CustomerScreen> {
         "product_id": productId,
         "name": product["name"],
         "price": double.parse(product["price"].toString()),
-        "qty": qty
+        "qty": qty,
       });
 
       message = "${product["name"]} added to cart";
@@ -102,8 +102,10 @@ class _CustomerScreenState extends State<CustomerScreen> {
 
         Padding(
           padding: EdgeInsets.all(10),
-          child: Text("Products",
-              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+          child: Text(
+            "Products",
+            style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+          ),
         ),
 
         Expanded(
@@ -121,19 +123,22 @@ class _CustomerScreenState extends State<CustomerScreen> {
               int productId = int.parse(product["id"].toString());
 
               qtyControllers.putIfAbsent(
-                  productId, () => TextEditingController(text: "1"));
+                productId,
+                () => TextEditingController(text: "1"),
+              );
 
               return Card(
                 shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(15)),
+                  borderRadius: BorderRadius.circular(15),
+                ),
                 elevation: 3,
                 child: Padding(
                   padding: EdgeInsets.all(10),
-                  child: SingleChildScrollView( // 🔥 FIX OVERFLOW
+                  child: SingleChildScrollView(
+                    // 🔥 FIX OVERFLOW
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-
                         // IMAGE
                         product["image_data"] != null &&
                                 product["image_data"] != ""
@@ -142,9 +147,13 @@ class _CustomerScreenState extends State<CustomerScreen> {
 
                         SizedBox(height: 5),
 
-                        Text(product["name"],
-                            style: TextStyle(
-                                fontWeight: FontWeight.bold, fontSize: 16)),
+                        Text(
+                          product["name"],
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
+                        ),
 
                         Text("₹${product["price"]}"),
                         Text("Stock: ${product["stock"]}"),
@@ -169,8 +178,8 @@ class _CustomerScreenState extends State<CustomerScreen> {
                             minimumSize: Size(double.infinity, 40),
                           ),
                           onPressed: () {
-                            int qty = int.tryParse(
-                                    qtyControllers[productId]!.text) ??
+                            int qty =
+                                int.tryParse(qtyControllers[productId]!.text) ??
                                 1;
 
                             addToCart(product, qty);
@@ -184,7 +193,7 @@ class _CustomerScreenState extends State<CustomerScreen> {
               );
             },
           ),
-        )
+        ),
       ],
     );
   }
@@ -216,14 +225,16 @@ class _CustomerScreenState extends State<CustomerScreen> {
 
         Padding(
           padding: EdgeInsets.all(10),
-          child: Text("Total: ₹$total",
-              style: TextStyle(fontWeight: FontWeight.bold)),
+          child: Text(
+            "Total: ₹$total",
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
         ),
 
         ElevatedButton(
           onPressed: cartItems.isEmpty ? null : placeOrder,
           child: Text("Place Order"),
-        )
+        ),
       ],
     );
   }
@@ -271,7 +282,7 @@ class _CustomerScreenState extends State<CustomerScreen> {
               Navigator.pushNamed(context, "/login");
             },
             child: Text("Logout"),
-          )
+          ),
         ],
       ),
     );
@@ -313,7 +324,9 @@ class _CustomerScreenState extends State<CustomerScreen> {
           BottomNavigationBarItem(icon: Icon(Icons.home), label: "Home"),
           BottomNavigationBarItem(icon: Icon(Icons.history), label: "Orders"),
           BottomNavigationBarItem(
-              icon: Icon(Icons.shopping_cart), label: "Cart"),
+            icon: Icon(Icons.shopping_cart),
+            label: "Cart",
+          ),
           BottomNavigationBarItem(icon: Icon(Icons.person), label: "Profile"),
         ],
       ),

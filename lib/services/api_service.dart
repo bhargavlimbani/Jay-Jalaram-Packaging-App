@@ -1,6 +1,7 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../utils/constants.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class ApiService {
   // REGISTER
@@ -77,11 +78,41 @@ class ApiService {
     return jsonDecode(res.body);
   }
 
+  static Future<Map<String, dynamic>> updateOrderStatus(
+    int orderId,
+    String status,
+  ) async {
+    var res = await http.post(
+      Uri.parse("${AppConstants.baseUrl}/orders/update_order_status.php"),
+      headers: {"Content-Type": "application/json"},
+      body: jsonEncode({"order_id": orderId, "status": status}),
+    );
+    return jsonDecode(res.body);
+  }
+
+  static Future<List> getCustomers() async {
+    var res = await http.get(
+      Uri.parse("${AppConstants.baseUrl}/auth/get_customers.php"),
+    );
+    return jsonDecode(res.body);
+  }
+
+  static Future deleteProduct(int id) async {
+    await http.post(
+      Uri.parse("${AppConstants.baseUrl}/products/delete_product.php"),
+      body: jsonEncode({"id": id}),
+    );
+  }
+
   static Future<Map<String, dynamic>> placeOrder(List items) async {
+    final prefs = await SharedPreferences.getInstance();
+
+    int userId = prefs.getInt("user_id") ?? 0;
+
     var res = await http.post(
       Uri.parse("${AppConstants.baseUrl}/orders/place_order.php"),
       headers: {"Content-Type": "application/json"},
-      body: jsonEncode({"items": items}),
+      body: jsonEncode({"items": items, "user_id": userId}),
     );
 
     return jsonDecode(res.body);
