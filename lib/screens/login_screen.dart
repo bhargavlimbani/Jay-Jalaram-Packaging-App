@@ -43,12 +43,12 @@ if (data["status"] == "success") {
   if (user["role"] == "admin") {
     Navigator.pushReplacement(
       context,
-      MaterialPageRoute(builder: (context) => AdminScreen()),
+      MaterialPageRoute(builder: (context) => AdminScreen(adminId: user["id"])),
     );
   } else {
     Navigator.pushReplacement(
       context,
-      MaterialPageRoute(builder: (context) => CustomerScreen()),
+      MaterialPageRoute(builder: (context) => CustomerScreen(userId: user["id"])),
     );
   }
 } else {

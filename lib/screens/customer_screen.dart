@@ -4,6 +4,9 @@ import 'package:flutter/material.dart';
 import '../services/api_service.dart';
 
 class CustomerScreen extends StatefulWidget {
+  final int userId;
+
+  CustomerScreen({required this.userId});
   @override
   _CustomerScreenState createState() => _CustomerScreenState();
 }
@@ -21,11 +24,20 @@ class _CustomerScreenState extends State<CustomerScreen> {
   String search = "";
   String selectedCategory = "";
 
+  // ================= PROFILE VARIABLES =================
+  TextEditingController nameController = TextEditingController();
+  TextEditingController emailController = TextEditingController();
+  TextEditingController phoneController = TextEditingController();
+  TextEditingController addressController = TextEditingController();
+
+  int userId = 1; // ⚠️ replace with login user id
+
   @override
   void initState() {
     super.initState();
     fetchProducts();
     fetchOrders();
+    fetchProfile(); // ✅ added
   }
 
   // ================= FETCH =================
@@ -39,17 +51,46 @@ class _CustomerScreenState extends State<CustomerScreen> {
     setState(() => orders = data);
   }
 
+  // ================= PROFILE FETCH =================
+  void fetchProfile() async {
+    var res = await ApiService.getProfile(
+      widget.userId,
+    ); // ✅ updated to use widget.userId
+
+    if (res["status"] == "success") {
+      var p = res["profile"];
+
+      setState(() {
+        nameController.text = p["name"] ?? "";
+        emailController.text = p["email"] ?? "";
+        phoneController.text = p["phone"] ?? "";
+        addressController.text = p["address"] ?? "";
+      });
+    }
+  }
+
+  // ================= PROFILE UPDATE =================
+  void updateProfile() async {
+    var res = await ApiService.updateProfile({
+      "user_id": userId,
+      "name": nameController.text,
+      "email": emailController.text,
+      "phone": phoneController.text,
+      "address": addressController.text,
+    });
+
+    setState(() {
+      message = res["message"];
+    });
+  }
+
   // ================= IMAGE =================
   Widget showImage(String base64String) {
     try {
       String base64Data = base64String.split(',').last;
       Uint8List bytes = base64Decode(base64Data);
 
-      return Image.memory(
-        bytes,
-        fit: BoxFit.cover,
-        width: double.infinity,
-      );
+      return Image.memory(bytes, fit: BoxFit.cover, width: double.infinity);
     } catch (e) {
       return Icon(Icons.image_not_supported, size: 80);
     }
@@ -87,8 +128,9 @@ class _CustomerScreenState extends State<CustomerScreen> {
       padding: EdgeInsets.symmetric(horizontal: 5),
       child: ElevatedButton(
         style: ElevatedButton.styleFrom(
-          backgroundColor:
-              selectedCategory == value ? Colors.teal : Colors.grey[300],
+          backgroundColor: selectedCategory == value
+              ? Colors.teal
+              : Colors.grey[300],
         ),
         onPressed: () {
           setState(() {
@@ -103,8 +145,7 @@ class _CustomerScreenState extends State<CustomerScreen> {
   // ================= HOME =================
   Widget homePage() {
     var filteredProducts = products.where((p) {
-      bool matchSearch =
-          p["name"].toLowerCase().contains(search.toLowerCase());
+      bool matchSearch = p["name"].toLowerCase().contains(search.toLowerCase());
 
       bool matchCategory =
           selectedCategory == "" || p["box_type"] == selectedCategory;
@@ -114,8 +155,6 @@ class _CustomerScreenState extends State<CustomerScreen> {
 
     return Column(
       children: [
-
-        // MESSAGE
         if (message.isNotEmpty)
           Container(
             padding: EdgeInsets.all(10),
@@ -124,7 +163,6 @@ class _CustomerScreenState extends State<CustomerScreen> {
             child: Text(message),
           ),
 
-        // SEARCH
         Padding(
           padding: EdgeInsets.all(10),
           child: TextField(
@@ -141,7 +179,6 @@ class _CustomerScreenState extends State<CustomerScreen> {
           ),
         ),
 
-        // CATEGORY
         SingleChildScrollView(
           scrollDirection: Axis.horizontal,
           child: Row(
@@ -156,7 +193,6 @@ class _CustomerScreenState extends State<CustomerScreen> {
 
         SizedBox(height: 10),
 
-        // PRODUCTS
         Expanded(
           child: GridView.builder(
             padding: EdgeInsets.all(10),
@@ -172,18 +208,20 @@ class _CustomerScreenState extends State<CustomerScreen> {
               int productId = int.parse(product["id"].toString());
 
               qtyControllers.putIfAbsent(
-                  productId, () => TextEditingController(text: "1"));
+                productId,
+                () => TextEditingController(text: "1"),
+              );
 
               return Card(
                 shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(20)),
+                  borderRadius: BorderRadius.circular(20),
+                ),
                 elevation: 5,
                 child: Padding(
                   padding: EdgeInsets.all(10),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-
                       Expanded(
                         child: product["image_data"] != null
                             ? showImage(product["image_data"])
@@ -192,8 +230,10 @@ class _CustomerScreenState extends State<CustomerScreen> {
 
                       SizedBox(height: 5),
 
-                      Text(product["name"],
-                          style: TextStyle(fontWeight: FontWeight.bold)),
+                      Text(
+                        product["name"],
+                        style: TextStyle(fontWeight: FontWeight.bold),
+                      ),
 
                       Text("₹${product["price"]}"),
 
@@ -217,8 +257,8 @@ class _CustomerScreenState extends State<CustomerScreen> {
                           minimumSize: Size(double.infinity, 40),
                         ),
                         onPressed: () {
-                          int qty = int.tryParse(
-                                  qtyControllers[productId]!.text) ??
+                          int qty =
+                              int.tryParse(qtyControllers[productId]!.text) ??
                               1;
 
                           addToCart(product, qty);
@@ -263,8 +303,10 @@ class _CustomerScreenState extends State<CustomerScreen> {
 
         Padding(
           padding: EdgeInsets.all(10),
-          child: Text("Total: ₹$total",
-              style: TextStyle(fontWeight: FontWeight.bold)),
+          child: Text(
+            "Total: ₹$total",
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
         ),
 
         ElevatedButton(
@@ -298,11 +340,40 @@ class _CustomerScreenState extends State<CustomerScreen> {
       padding: EdgeInsets.all(20),
       child: Column(
         children: [
-          TextField(decoration: InputDecoration(labelText: "Name")),
-          TextField(decoration: InputDecoration(labelText: "Phone")),
-          TextField(decoration: InputDecoration(labelText: "Address")),
+          if (message.isNotEmpty)
+            Container(
+              padding: EdgeInsets.all(10),
+              color: Colors.green[200],
+              child: Text(message),
+            ),
+
+          TextField(
+            controller: nameController,
+            decoration: InputDecoration(labelText: "Name"),
+          ),
+
+          TextField(
+            controller: emailController,
+            decoration: InputDecoration(labelText: "Email"),
+          ),
+
+          TextField(
+            controller: phoneController,
+            decoration: InputDecoration(labelText: "Phone"),
+          ),
+
+          TextField(
+            controller: addressController,
+            decoration: InputDecoration(labelText: "Address"),
+          ),
+
           SizedBox(height: 20),
-          ElevatedButton(onPressed: () {}, child: Text("Update Profile")),
+
+          ElevatedButton(
+            onPressed: updateProfile,
+            child: Text("Update Profile"),
+          ),
+
           ElevatedButton(
             onPressed: () => Navigator.pushNamed(context, "/login"),
             child: Text("Logout"),
@@ -331,8 +402,10 @@ class _CustomerScreenState extends State<CustomerScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar:
-          AppBar(title: Text("Hello Customer"), backgroundColor: Colors.teal),
+      appBar: AppBar(
+        title: Text("Hello Customer"),
+        backgroundColor: Colors.teal,
+      ),
       body: getPage(),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: selectedIndex,
@@ -346,7 +419,9 @@ class _CustomerScreenState extends State<CustomerScreen> {
           BottomNavigationBarItem(icon: Icon(Icons.home), label: "Home"),
           BottomNavigationBarItem(icon: Icon(Icons.list), label: "Orders"),
           BottomNavigationBarItem(
-              icon: Icon(Icons.shopping_cart), label: "Cart"),
+            icon: Icon(Icons.shopping_cart),
+            label: "Cart",
+          ),
           BottomNavigationBarItem(icon: Icon(Icons.person), label: "Profile"),
         ],
       ),

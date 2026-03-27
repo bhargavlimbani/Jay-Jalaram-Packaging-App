@@ -64,6 +64,25 @@ class ApiService {
     return jsonDecode(res.body);
   }
 
+  static Future getProfile(int userId) async {
+    var response = await http.get(
+      Uri.parse("${AppConstants.baseUrl}/auth/profile.php?user_id=$userId"),
+    );
+
+    return jsonDecode(response.body);
+  }
+
+  // ================= PROFILE UPDATE =================
+  static Future updateProfile(Map data) async {
+    var response = await http.post(
+      Uri.parse("${AppConstants.baseUrl}/auth/profile.php"),
+      headers: {"Content-Type": "application/json"},
+      body: jsonEncode(data),
+    );
+
+    return jsonDecode(response.body);
+  }
+
   static Future<List> getProducts() async {
     var res = await http.get(
       Uri.parse("${AppConstants.baseUrl}/products/get_products.php"),

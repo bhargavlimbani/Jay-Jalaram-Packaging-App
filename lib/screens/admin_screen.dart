@@ -3,6 +3,9 @@ import 'package:flutter/material.dart';
 import '../services/api_service.dart';
 
 class AdminScreen extends StatefulWidget {
+final int? adminId;
+
+AdminScreen({this.adminId});
   @override
   _AdminScreenState createState() => _AdminScreenState();
 }
@@ -16,12 +19,21 @@ class _AdminScreenState extends State<AdminScreen> {
 
   String message = "";
 
+  // ================= PROFILE VARIABLES =================
+  TextEditingController nameController = TextEditingController();
+  TextEditingController emailController = TextEditingController();
+  TextEditingController phoneController = TextEditingController();
+  TextEditingController addressController = TextEditingController();
+
+  int adminId = 1;
+
   @override
   void initState() {
     super.initState();
     fetchOrders();
     fetchProducts();
     fetchCustomers();
+    fetchProfile(); 
   }
 
   // ================= API =================
@@ -37,8 +49,41 @@ class _AdminScreenState extends State<AdminScreen> {
   }
 
   void fetchCustomers() async {
-    var data = await ApiService.getCustomers(); // create API
+    var data = await ApiService.getCustomers();
     setState(() => customers = data);
+  }
+
+  // ================= PROFILE FETCH =================
+  void fetchProfile() async {
+    var res = await ApiService.getProfile(widget.adminId ?? 1);
+
+    if (res["status"] == "success") {
+      var p = res["profile"];
+
+      setState(() {
+        nameController.text = p["name"] ?? "";
+        emailController.text = p["email"] ?? "";
+        phoneController.text = p["phone"] ?? "";
+        addressController.text = p["address"] ?? "";
+      });
+    }
+  }
+
+  // ================= PROFILE UPDATE =================
+  void updateProfile() async {
+    var res = await ApiService.updateProfile({
+      "user_id": widget.adminId,
+      "name": nameController.text,
+      "email": emailController.text,
+      "phone": phoneController.text,
+      "address": addressController.text,
+    });
+
+    fetchProfile(); 
+
+    setState(() {
+      message = res["message"];
+    });
   }
 
   void updateStatus(int id, String status) async {
@@ -53,7 +98,6 @@ class _AdminScreenState extends State<AdminScreen> {
 
   // ================= UI PAGES =================
 
-  // 📦 ORDERS
   Widget ordersPage() {
     return ListView.builder(
       itemCount: orders.length,
@@ -67,17 +111,12 @@ class _AdminScreenState extends State<AdminScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  "Order #${o["id"]}",
-                  style: TextStyle(fontWeight: FontWeight.bold),
-                ),
-
+                Text("Order #${o["id"]}",
+                    style: TextStyle(fontWeight: FontWeight.bold)),
                 Text("Customer: ${o["customer_name"]}"),
                 Text("Total: ₹${o["total_price"]}"),
                 Text("Status: ${o["status"]}"),
-
                 SizedBox(height: 10),
-
                 Row(
                   children: [
                     ElevatedButton(
@@ -99,19 +138,16 @@ class _AdminScreenState extends State<AdminScreen> {
     );
   }
 
-  // 👥 CUSTOMERS
   Widget customersPage() {
     return ListView.builder(
       itemCount: customers.length,
       itemBuilder: (context, i) {
         var c = customers[i];
-
         return ListTile(title: Text(c["name"]), subtitle: Text(c["email"]));
       },
     );
   }
 
-  // 🛒 PRODUCTS
   Widget productsPage() {
     return Column(
       children: [
@@ -121,13 +157,11 @@ class _AdminScreenState extends State<AdminScreen> {
           },
           child: Text("Add Product"),
         ),
-
         Expanded(
           child: ListView.builder(
             itemCount: products.length,
             itemBuilder: (context, i) {
               var p = products[i];
-
               return Card(
                 child: ListTile(
                   title: Text(p["name"]),
@@ -145,7 +179,6 @@ class _AdminScreenState extends State<AdminScreen> {
                           );
                         },
                       ),
-
                       IconButton(
                         icon: Icon(Icons.delete),
                         onPressed: () => deleteProduct(p["id"]),
@@ -161,31 +194,61 @@ class _AdminScreenState extends State<AdminScreen> {
     );
   }
 
-  // 🧾 INVOICE
   Widget invoicePage() {
     return Center(child: Text("Invoice Coming Soon"));
   }
 
-  // 👤 PROFILE
+  // ================= PROFILE PAGE =================
   Widget profilePage() {
-    return Column(
-      children: [
-        TextField(decoration: InputDecoration(labelText: "Name")),
-        TextField(decoration: InputDecoration(labelText: "Email")),
+    return Padding(
+      padding: EdgeInsets.all(20),
+      child: Column(
+        children: [
 
-        ElevatedButton(onPressed: () {}, child: Text("Update Profile")),
+          if (message.isNotEmpty)
+            Container(
+              padding: EdgeInsets.all(10),
+              color: Colors.green[200],
+              child: Text(message),
+            ),
 
-        ElevatedButton(
-          onPressed: () {
-            Navigator.pushReplacementNamed(context, "/login");
-          },
-          child: Text("Logout"),
-        ),
-      ],
+          TextField(
+            controller: nameController,
+            decoration: InputDecoration(labelText: "Name"),
+          ),
+
+          TextField(
+            controller: emailController,
+            decoration: InputDecoration(labelText: "Email"),
+          ),
+
+          TextField(
+            controller: phoneController,
+            decoration: InputDecoration(labelText: "Phone"),
+          ),
+
+          TextField(
+            controller: addressController,
+            decoration: InputDecoration(labelText: "Address"),
+          ),
+
+          SizedBox(height: 20),
+
+          ElevatedButton(
+            onPressed: updateProfile,
+            child: Text("Update Profile"),
+          ),
+
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pushReplacementNamed(context, "/login");
+            },
+            child: Text("Logout"),
+          ),
+        ],
+      ),
     );
   }
-
-  // ================= PAGE SWITCH =================
 
   Widget getPage() {
     switch (selectedIndex) {
@@ -204,13 +267,11 @@ class _AdminScreenState extends State<AdminScreen> {
     }
   }
 
-  // ================= UI =================
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text("Admin Panel"), backgroundColor: Colors.teal),
-
+      appBar:
+          AppBar(title: Text("Admin Panel"), backgroundColor: Colors.teal),
       body: getPage(),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: selectedIndex,
@@ -219,22 +280,15 @@ class _AdminScreenState extends State<AdminScreen> {
             selectedIndex = index;
           });
         },
-
-        backgroundColor: Colors.white, // 🔥 important
-
-        selectedItemColor: Colors.teal, // active color
-        unselectedItemColor: Colors.grey, // inactive color
-
-        showUnselectedLabels: true, // 🔥 show all labels
-
+        backgroundColor: Colors.white,
+        selectedItemColor: Colors.teal,
+        unselectedItemColor: Colors.grey,
+        showUnselectedLabels: true,
         type: BottomNavigationBarType.fixed,
         items: [
           BottomNavigationBarItem(icon: Icon(Icons.people), label: "Customers"),
           BottomNavigationBarItem(icon: Icon(Icons.list), label: "Orders"),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.inventory),
-            label: "Products",
-          ),
+          BottomNavigationBarItem(icon: Icon(Icons.inventory), label: "Products"),
           BottomNavigationBarItem(icon: Icon(Icons.receipt), label: "Invoice"),
           BottomNavigationBarItem(icon: Icon(Icons.person), label: "Profile"),
         ],
