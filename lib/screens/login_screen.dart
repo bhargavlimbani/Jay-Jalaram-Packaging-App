@@ -36,6 +36,8 @@ if (data["status"] == "success") {
 
   // 🔥 SAVE USER DATA
   final prefs = await SharedPreferences.getInstance();
+  await prefs.setInt("user_id", int.tryParse(user["id"].toString()) ?? 0);
+  await prefs.setString("role", user["role"] ?? "customer");
   await prefs.setString("name", user["name"]);
   await prefs.setString("email", user["email"]);
   await prefs.setString("phone", user["phone"] ?? "");
