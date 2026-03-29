@@ -2,6 +2,7 @@
 import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class CustomerScreen extends StatefulWidget {
   final int userId;
@@ -29,8 +30,6 @@ class _CustomerScreenState extends State<CustomerScreen> {
   TextEditingController emailController = TextEditingController();
   TextEditingController phoneController = TextEditingController();
   TextEditingController addressController = TextEditingController();
-
-  int userId = 1; // ⚠️ replace with login user id
 
   @override
   void initState() {
@@ -72,7 +71,7 @@ class _CustomerScreenState extends State<CustomerScreen> {
   // ================= PROFILE UPDATE =================
   void updateProfile() async {
     var res = await ApiService.updateProfile({
-      "user_id": userId,
+      "user_id": widget.userId,
       "name": nameController.text,
       "email": emailController.text,
       "phone": phoneController.text,
@@ -375,7 +374,7 @@ class _CustomerScreenState extends State<CustomerScreen> {
           ),
 
           ElevatedButton(
-            onPressed: () => Navigator.pushNamed(context, "/login"),
+            onPressed: _logout,
             child: Text("Logout"),
           ),
         ],
@@ -426,5 +425,11 @@ class _CustomerScreenState extends State<CustomerScreen> {
         ],
       ),
     );
+  }
+
+  Future<void> _logout() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.clear();
+    Navigator.pushReplacementNamed(context, "/login");
   }
 }

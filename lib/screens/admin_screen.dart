@@ -7,6 +7,7 @@ import 'package:jay_jalaram_packaging/admin_information/customer_detail_screen.d
 import '../services/api_service.dart';
 import '../admin_information/add_product.dart';
 import '../admin_information/edit_product.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class AdminScreen extends StatefulWidget {
   final int? adminId;
@@ -298,7 +299,7 @@ class _AdminScreenState extends State<AdminScreen> {
 
           ElevatedButton(
             onPressed: () {
-              Navigator.pushReplacementNamed(context, "/login");
+              _logout();
             },
             child: Text("Logout"),
           ),
@@ -353,5 +354,11 @@ class _AdminScreenState extends State<AdminScreen> {
         ],
       ),
     );
+  }
+
+  Future<void> _logout() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.clear();
+    Navigator.pushReplacementNamed(context, "/login");
   }
 }
