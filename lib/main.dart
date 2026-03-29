@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'screens/login_screen.dart';
 import 'screens/register_screen.dart';
 import 'screens/forgot_password_screen.dart';
+import 'admin_information/add_product.dart';
 
 void main() {
   runApp(MyApp());
@@ -19,6 +20,7 @@ class MyApp extends StatelessWidget {
         "/login": (context) => LoginScreen(),
         "/register": (context) => RegisterScreen(),
         "/forgot": (context) => ForgotPasswordScreen(),
+        "/add_product": (context) => AddProductScreen(),
       },
     );
   }

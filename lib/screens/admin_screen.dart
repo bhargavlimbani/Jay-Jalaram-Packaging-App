@@ -1,11 +1,17 @@
+// import 'dart:convert';
 import 'dart:convert';
+import 'dart:typed_data';
+
 import 'package:flutter/material.dart';
+import 'package:jay_jalaram_packaging/admin_information/customer_detail_screen.dart';
 import '../services/api_service.dart';
+import '../admin_information/add_product.dart';
+import '../admin_information/edit_product.dart';
 
 class AdminScreen extends StatefulWidget {
-final int? adminId;
+  final int? adminId;
 
-AdminScreen({this.adminId});
+  AdminScreen({this.adminId});
   @override
   _AdminScreenState createState() => _AdminScreenState();
 }
@@ -33,7 +39,7 @@ class _AdminScreenState extends State<AdminScreen> {
     fetchOrders();
     fetchProducts();
     fetchCustomers();
-    fetchProfile(); 
+    fetchProfile();
   }
 
   // ================= API =================
@@ -79,7 +85,7 @@ class _AdminScreenState extends State<AdminScreen> {
       "address": addressController.text,
     });
 
-    fetchProfile(); 
+    fetchProfile();
 
     setState(() {
       message = res["message"];
@@ -111,8 +117,10 @@ class _AdminScreenState extends State<AdminScreen> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text("Order #${o["id"]}",
-                    style: TextStyle(fontWeight: FontWeight.bold)),
+                Text(
+                  "Order #${o["id"]}",
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
                 Text("Customer: ${o["customer_name"]}"),
                 Text("Total: ₹${o["total_price"]}"),
                 Text("Status: ${o["status"]}"),
@@ -143,7 +151,19 @@ class _AdminScreenState extends State<AdminScreen> {
       itemCount: customers.length,
       itemBuilder: (context, i) {
         var c = customers[i];
-        return ListTile(title: Text(c["name"]), subtitle: Text(c["email"]));
+        return ListTile(
+          title: Text(c["name"]),
+          subtitle: Text(c["email"]),
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) =>
+                    CustomerDetailScreen(id: int.parse(c["id"].toString())),
+              ),
+            );
+          },
+        );
       },
     );
   }
@@ -153,7 +173,12 @@ class _AdminScreenState extends State<AdminScreen> {
       children: [
         ElevatedButton(
           onPressed: () {
-            Navigator.pushNamed(context, "/addProduct");
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => AddProductScreen()),
+            ).then((_) {
+              fetchProducts(); // refresh list after adding
+            });
           },
           child: Text("Add Product"),
         ),
@@ -162,26 +187,59 @@ class _AdminScreenState extends State<AdminScreen> {
             itemCount: products.length,
             itemBuilder: (context, i) {
               var p = products[i];
+
+              Uint8List? imageBytes;
+              try {
+                if (p["image_data"] != null && p["image_data"] != "") {
+                  String base64String = p["image_data"];
+
+                  base64String = base64String
+                      .replaceAll("data:image/jpeg;base64,", "")
+                      .replaceAll("data:image/png;base64,", "");
+
+                  imageBytes = base64Decode(base64String);
+                }
+              } catch (e) {
+                print("Image decode error: $e");
+              }
+
               return Card(
                 child: ListTile(
+                  leading: imageBytes != null
+                      ? Image.memory(
+                          imageBytes,
+                          width: 50,
+                          height: 150,
+                          fit: BoxFit.cover,
+                        )
+                      : Icon(Icons.image),
+
                   title: Text(p["name"]),
                   subtitle: Text("₹${p["price"]}"),
+
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
                       IconButton(
                         icon: Icon(Icons.edit),
                         onPressed: () {
-                          Navigator.pushNamed(
+                          Navigator.push(
                             context,
-                            "/editProduct",
-                            arguments: p,
-                          );
+                            MaterialPageRoute(
+                              builder: (context) =>
+                                  EditProductScreen(product: p),
+                            ),
+                          ).then((_) {
+                            fetchProducts();
+                          });
                         },
                       ),
                       IconButton(
                         icon: Icon(Icons.delete),
-                        onPressed: () => deleteProduct(p["id"]),
+                        onPressed: () {
+                          int id = int.tryParse(p["id"].toString()) ?? 0;
+                          deleteProduct(id);
+                        },
                       ),
                     ],
                   ),
@@ -204,7 +262,6 @@ class _AdminScreenState extends State<AdminScreen> {
       padding: EdgeInsets.all(20),
       child: Column(
         children: [
-
           if (message.isNotEmpty)
             Container(
               padding: EdgeInsets.all(10),
@@ -270,8 +327,7 @@ class _AdminScreenState extends State<AdminScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar:
-          AppBar(title: Text("Admin Panel"), backgroundColor: Colors.teal),
+      appBar: AppBar(title: Text("Admin Panel"), backgroundColor: Colors.teal),
       body: getPage(),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: selectedIndex,
@@ -288,7 +344,10 @@ class _AdminScreenState extends State<AdminScreen> {
         items: [
           BottomNavigationBarItem(icon: Icon(Icons.people), label: "Customers"),
           BottomNavigationBarItem(icon: Icon(Icons.list), label: "Orders"),
-          BottomNavigationBarItem(icon: Icon(Icons.inventory), label: "Products"),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.inventory),
+            label: "Products",
+          ),
           BottomNavigationBarItem(icon: Icon(Icons.receipt), label: "Invoice"),
           BottomNavigationBarItem(icon: Icon(Icons.person), label: "Profile"),
         ],

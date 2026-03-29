@@ -83,10 +83,95 @@ class ApiService {
     return jsonDecode(response.body);
   }
 
+  static Future getCustomerById(int id) async {
+    var res = await http.get(
+      Uri.parse("${AppConstants.baseUrl}/admin/get_customer_by_id.php?id=$id"),
+    );
+
+    return jsonDecode(res.body);
+  }
+
+  static Future updateCustomer(Map data) async {
+    var res = await http.post(
+      Uri.parse("${AppConstants.baseUrl}/admin/update_customer.php"),
+      headers: {"Content-Type": "application/json"},
+      body: jsonEncode(data),
+    );
+
+    return jsonDecode(res.body);
+  }
+
   static Future<List> getProducts() async {
     var res = await http.get(
       Uri.parse("${AppConstants.baseUrl}/products/get_products.php"),
     );
+    return jsonDecode(res.body);
+  }
+
+  static Future addProduct({
+    required String name,
+    required String price,
+    required String boxType,
+    required String imagePath,
+    required String description,
+    required String stock,
+  }) async {
+    var request = http.MultipartRequest(
+      'POST',
+      Uri.parse("${AppConstants.baseUrl}/products/add_product.php"),
+    );
+
+    request.fields['name'] = name;
+    request.fields['price'] = price;
+    request.fields['box_type'] = boxType;
+    request.fields['description'] = description;
+    request.fields['stock'] = stock;
+
+    request.files.add(await http.MultipartFile.fromPath('image', imagePath));
+
+    var response = await request.send();
+    var res = await http.Response.fromStream(response);
+
+    return jsonDecode(res.body);
+  }
+
+  static Future deleteProduct(int id) async {
+    var res = await http.post(
+      Uri.parse("${AppConstants.baseUrl}/products/delete_product.php"),
+      body: {"id": id.toString()},
+    );
+
+    return jsonDecode(res.body);
+  }
+
+  static Future updateProduct({
+    required String id,
+    required String name,
+    required String price,
+    required String boxType,
+    required String description,
+    required String stock,
+    String? imagePath,
+  }) async {
+    var request = http.MultipartRequest(
+      'POST',
+      Uri.parse("${AppConstants.baseUrl}/products/update_product.php"),
+    );
+
+    request.fields['id'] = id;
+    request.fields['name'] = name;
+    request.fields['price'] = price;
+    request.fields['box_type'] = boxType;
+    request.fields['description'] = description;
+    request.fields['stock'] = stock;
+
+    if (imagePath != null) {
+      request.files.add(await http.MultipartFile.fromPath('image', imagePath));
+    }
+
+    var response = await request.send();
+    var res = await http.Response.fromStream(response);
+
     return jsonDecode(res.body);
   }
 
@@ -114,13 +199,6 @@ class ApiService {
       Uri.parse("${AppConstants.baseUrl}/auth/get_customers.php"),
     );
     return jsonDecode(res.body);
-  }
-
-  static Future deleteProduct(int id) async {
-    await http.post(
-      Uri.parse("${AppConstants.baseUrl}/products/delete_product.php"),
-      body: jsonEncode({"id": id}),
-    );
   }
 
   static Future<Map<String, dynamic>> placeOrder(List items) async {
