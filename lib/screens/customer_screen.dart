@@ -386,16 +386,95 @@ void fetchOrders() async {
 
   // ================= PROFILE =================
   Widget profilePage() {
-    return Padding(
+    InputDecoration fieldStyle(String label, IconData icon) {
+      return InputDecoration(
+        labelText: label,
+        prefixIcon: Icon(icon),
+        filled: true,
+        fillColor: Colors.grey.shade100,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.grey.shade300),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.teal, width: 1.5),
+        ),
+      );
+    }
+
+    return SingleChildScrollView(
       padding: EdgeInsets.all(20),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          TextField(controller: nameController),
-          TextField(controller: emailController),
-          TextField(controller: phoneController),
-          TextField(controller: addressController),
-          ElevatedButton(onPressed: updateProfile, child: Text("Update")),
-          ElevatedButton(onPressed: _logout, child: Text("Logout")),
+          if (message.isNotEmpty)
+            Container(
+              padding: EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.green.shade100,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                message,
+                style: TextStyle(color: Colors.green.shade900),
+              ),
+            ),
+          SizedBox(height: 16),
+          Text(
+            "My Profile",
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          SizedBox(height: 12),
+          TextField(
+            controller: nameController,
+            decoration: fieldStyle("Name", Icons.person),
+          ),
+          SizedBox(height: 12),
+          TextField(
+            controller: emailController,
+            decoration: fieldStyle("Email", Icons.email),
+          ),
+          SizedBox(height: 12),
+          TextField(
+            controller: phoneController,
+            decoration: fieldStyle("Phone", Icons.phone),
+          ),
+          SizedBox(height: 12),
+          TextField(
+            controller: addressController,
+            decoration: fieldStyle("Address", Icons.location_on),
+            maxLines: 2,
+          ),
+          SizedBox(height: 20),
+          ElevatedButton(
+            onPressed: updateProfile,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.teal,
+              foregroundColor: Colors.white,
+              padding: EdgeInsets.symmetric(vertical: 14),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            child: Text("Update Profile"),
+          ),
+          SizedBox(height: 10),
+          OutlinedButton(
+            onPressed: _logout,
+            style: OutlinedButton.styleFrom(
+              foregroundColor: Colors.red.shade700,
+              side: BorderSide(color: Colors.red.shade300),
+              padding: EdgeInsets.symmetric(vertical: 14),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            child: Text("Logout"),
+          ),
         ],
       ),
     );

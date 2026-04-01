@@ -10,6 +10,8 @@ import '../admin_information/edit_product.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:printing/printing.dart';
 import '../admin_information/invoice_screen.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'package:share_plus/share_plus.dart';
 
 class AdminScreen extends StatefulWidget {
   final int? adminId;
@@ -25,6 +27,7 @@ class _AdminScreenState extends State<AdminScreen> {
   List orders = [];
   List customers = [];
   List products = [];
+  List invoices = [];
 
   String message = "";
 
@@ -41,6 +44,7 @@ class _AdminScreenState extends State<AdminScreen> {
     fetchOrders();
     fetchProducts();
     fetchCustomers();
+    fetchInvoices();
     fetchProfile();
   }
 
@@ -57,6 +61,87 @@ class _AdminScreenState extends State<AdminScreen> {
   void fetchCustomers() async {
     var data = await ApiService.getCustomers();
     setState(() => customers = data);
+  }
+
+  void fetchInvoices() async {
+    var data = await ApiService.getInvoices();
+    setState(() => invoices = data ?? []);
+  }
+
+  String _pickValue(Map data, List<String> keys) {
+    for (final k in keys) {
+      if (data.containsKey(k) && data[k] != null && data[k].toString() != "") {
+        return data[k].toString();
+      }
+    }
+    return "";
+  }
+
+  String _pickInvoiceUrl(Map data) {
+    return _pickValue(data, ["pdf_url", "invoice_url", "file_url", "url"]);
+  }
+
+  Future<void> _openUrl(String url) async {
+    if (url.isEmpty) return;
+    final uri = Uri.parse(url);
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("Cannot open invoice link")),
+      );
+    }
+  }
+
+  void _showInvoiceActions(Map invoice) {
+    final url = _pickInvoiceUrl(invoice);
+
+    if (url.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text("No invoice file found")),
+      );
+      return;
+    }
+
+    showModalBottomSheet(
+      context: context,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (context) {
+        return SafeArea(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: Icon(Icons.visibility),
+                title: Text("View"),
+                onTap: () {
+                  Navigator.pop(context);
+                  _openUrl(url);
+                },
+              ),
+              ListTile(
+                leading: Icon(Icons.download),
+                title: Text("Download"),
+                onTap: () {
+                  Navigator.pop(context);
+                  _openUrl(url);
+                },
+              ),
+              ListTile(
+                leading: Icon(Icons.share),
+                title: Text("Share"),
+                onTap: () {
+                  Navigator.pop(context);
+                  Share.share(url);
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   void fetchProfile() async {
@@ -150,7 +235,12 @@ void generateInvoiceAndShare(Map order) async {
         "index": 2,
         "count": products.length,
       },
-      {"icon": Icons.receipt, "title": "Invoice", "index": 3, "count": 0},
+      {
+        "icon": Icons.receipt,
+        "title": "Invoice",
+        "index": 3,
+        "count": invoices.length,
+      },
       {"icon": Icons.person, "title": "Profile", "index": 4, "count": 0},
     ];
 
@@ -368,42 +458,156 @@ void generateInvoiceAndShare(Map order) async {
   }
 
   Widget invoicePage() {
-    return Center(child: Text("Invoice Coming Soon"));
+    if (invoices.isEmpty) {
+      return Center(child: Text("No invoices yet"));
+    }
+
+    return ListView.separated(
+      padding: EdgeInsets.all(12),
+      itemCount: invoices.length,
+      separatorBuilder: (_, __) => SizedBox(height: 8),
+      itemBuilder: (context, i) {
+        final inv = invoices[i] as Map;
+
+        final id = _pickValue(inv, ["id", "invoice_id"]);
+        final userId = _pickValue(inv, ["user_id", "customer_id"]);
+        final total = _pickValue(inv, ["total", "total_price", "amount"]);
+        final date = _pickValue(inv, ["created_at", "date", "invoice_date"]);
+        final status = _pickValue(inv, ["status", "payment_status"]);
+
+        return Card(
+          elevation: 1.5,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          child: InkWell(
+            borderRadius: BorderRadius.circular(12),
+            onTap: () => _showInvoiceActions(inv),
+            child: Padding(
+              padding: EdgeInsets.all(12),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    id.isNotEmpty ? "Invoice #$id" : "Invoice",
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  if (userId.isNotEmpty) Text("User ID: $userId"),
+                  if (total.isNotEmpty) Text("Total: ₹$total"),
+                  if (date.isNotEmpty) Text("Date: $date"),
+                  if (status.isNotEmpty)
+                    Text(
+                      "Status: $status",
+                      style: TextStyle(color: Colors.teal),
+                    ),
+                  SizedBox(height: 6),
+                  Row(
+                    children: [
+                      Icon(Icons.more_horiz, size: 18, color: Colors.grey),
+                      SizedBox(width: 6),
+                      Text(
+                        "Tap for options",
+                        style: TextStyle(color: Colors.grey, fontSize: 12),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
   }
 
   Widget profilePage() {
-    return Padding(
+    InputDecoration fieldStyle(String label, IconData icon) {
+      return InputDecoration(
+        labelText: label,
+        prefixIcon: Icon(icon),
+        filled: true,
+        fillColor: Colors.grey.shade100,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.grey.shade300),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.teal, width: 1.5),
+        ),
+      );
+    }
+
+    return SingleChildScrollView(
       padding: EdgeInsets.all(20),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           if (message.isNotEmpty)
             Container(
-              padding: EdgeInsets.all(10),
-              color: Colors.green[200],
-              child: Text(message),
+              padding: EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.green.shade100,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                message,
+                style: TextStyle(color: Colors.green.shade900),
+              ),
             ),
+          SizedBox(height: 16),
+          Text(
+            "My Profile",
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          SizedBox(height: 12),
           TextField(
             controller: nameController,
-            decoration: InputDecoration(labelText: "Name"),
+            decoration: fieldStyle("Name", Icons.person),
           ),
+          SizedBox(height: 12),
           TextField(
             controller: emailController,
-            decoration: InputDecoration(labelText: "Email"),
+            decoration: fieldStyle("Email", Icons.email),
           ),
+          SizedBox(height: 12),
           TextField(
             controller: phoneController,
-            decoration: InputDecoration(labelText: "Phone"),
+            decoration: fieldStyle("Phone", Icons.phone),
           ),
+          SizedBox(height: 12),
           TextField(
             controller: addressController,
-            decoration: InputDecoration(labelText: "Address"),
+            decoration: fieldStyle("Address", Icons.location_on),
+            maxLines: 2,
           ),
           SizedBox(height: 20),
           ElevatedButton(
             onPressed: updateProfile,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.teal,
+              foregroundColor: Colors.white,
+              padding: EdgeInsets.symmetric(vertical: 14),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
             child: Text("Update Profile"),
           ),
-          ElevatedButton(onPressed: _logout, child: Text("Logout")),
+          SizedBox(height: 10),
+          OutlinedButton(
+            onPressed: _logout,
+            style: OutlinedButton.styleFrom(
+              foregroundColor: Colors.red.shade700,
+              side: BorderSide(color: Colors.red.shade300),
+              padding: EdgeInsets.symmetric(vertical: 14),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            child: Text("Logout"),
+          ),
         ],
       ),
     );
