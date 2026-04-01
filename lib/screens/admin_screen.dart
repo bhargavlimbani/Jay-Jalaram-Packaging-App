@@ -8,6 +8,8 @@ import '../services/api_service.dart';
 import '../admin_information/add_product.dart';
 import '../admin_information/edit_product.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:printing/printing.dart';
+import '../admin_information/invoice_screen.dart';
 
 class AdminScreen extends StatefulWidget {
   final int? adminId;
@@ -88,15 +90,44 @@ class _AdminScreenState extends State<AdminScreen> {
     });
   }
 
-  void updateStatus(int id, String status) async {
-    await ApiService.updateOrderStatus(id, status);
-    fetchOrders();
+  void updateStatus(int id, String status, Map order) async {
+    print("CALL API: ID=$id STATUS=$status");
+
+    var res = await ApiService.updateOrderStatus(id, status);
+
+    print("API RESPONSE: $res");
+
+    if (res["status"] == "success") {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(res["message"])));
+
+      fetchOrders();
+
+      // 🔥 AUTO INVOICE WHEN COMPLETED
+      if (status == "Completed") {
+        generateInvoiceAndShare(order);
+      }
+    } else {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(res["message"])));
+    }
   }
 
   void deleteProduct(int id) async {
     await ApiService.deleteProduct(id);
     fetchProducts();
   }
+
+
+void generateInvoiceAndShare(Map order) async {
+  final pdfData = await InvoiceService.generateInvoice(order);
+
+  await Printing.layoutPdf(
+    onLayout: (format) async => pdfData,
+  );
+}
 
   // 🔥 DASHBOARD GRID
   Widget dashboardGrid() {
@@ -208,13 +239,30 @@ class _AdminScreenState extends State<AdminScreen> {
                 Row(
                   children: [
                     ElevatedButton(
-                      onPressed: () => updateStatus(o["id"], "Accepted"),
+                      onPressed: () => updateStatus(
+                        int.parse(o["id"].toString()),
+                        "Accepted",
+                        o,
+                      ),
                       child: Text("Accept"),
                     ),
-                    SizedBox(width: 5),
+
                     ElevatedButton(
-                      onPressed: () => updateStatus(o["id"], "Rejected"),
+                      onPressed: () => updateStatus(
+                        int.parse(o["id"].toString()),
+                        "Rejected",
+                        o,
+                      ),
                       child: Text("Reject"),
+                    ),
+
+                    ElevatedButton(
+                      onPressed: () => updateStatus(
+                        int.parse(o["id"].toString()),
+                        "Completed",
+                        o,
+                      ),
+                      child: Text("Complete"),
                     ),
                   ],
                 ),

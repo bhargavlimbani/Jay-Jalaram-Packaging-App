@@ -178,17 +178,24 @@ class ApiService {
     return jsonDecode(res.body);
   }
 
-  static Future<Map<String, dynamic>> updateOrderStatus(
-    int orderId,
-    String status,
-  ) async {
-    var res = await http.post(
-      Uri.parse("${AppConstants.baseUrl}/orders/update_order_status.php"),
-      headers: {"Content-Type": "application/json"},
-      body: jsonEncode({"order_id": orderId, "status": status}),
-    );
-    return jsonDecode(res.body);
-  }
+static Future updateOrderStatus(int id, String status) async {
+  var res = await http.post(
+    Uri.parse("${AppConstants.baseUrl}/orders/update_order_status.php"),
+    body: {
+      "order_id": id.toString(),
+      "status": status,
+    },
+  );
+
+  print("STATUS RESPONSE: ${res.body}");
+
+  return jsonDecode(res.body);
+}
+
+static Future getInvoices() async {
+  var res = await http.get(Uri.parse("${AppConstants.baseUrl}/invoices/get_invoices.php"));
+  return jsonDecode(res.body);
+}
 
   static Future<List> getCustomers() async {
     var res = await http.get(
