@@ -44,10 +44,10 @@ class _CustomerScreenState extends State<CustomerScreen> {
     setState(() => products = data);
   }
 
-  void fetchOrders() async {
-    var data = await ApiService.getOrders();
-    setState(() => orders = data);
-  }
+void fetchOrders() async {
+  var data = await ApiService.getorders(widget.userId); // 🔥 IMPORTANT
+  setState(() => orders = data);
+}
 
   void fetchProfile() async {
     var res = await ApiService.getProfile(widget.userId);

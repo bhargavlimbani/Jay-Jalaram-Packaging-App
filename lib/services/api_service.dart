@@ -175,7 +175,7 @@ class ApiService {
     return jsonDecode(res.body);
   }
 
-  static Future<List> getOrders() async {
+  static Future<List> getallOrders(int userId) async {
     var res = await http.get(
       Uri.parse("${AppConstants.baseUrl}/orders/get_my_orders.php"),
     );
@@ -200,6 +200,16 @@ class ApiService {
     );
     return jsonDecode(res.body);
   }
+
+static Future getorders(int userId) async {
+  var res = await http.post(
+    Uri.parse("${AppConstants.baseUrl}/orders/get_orders.php"),
+    headers: {"Content-Type": "application/json"},
+    body: jsonEncode({"user_id": userId}),
+  );
+
+  return jsonDecode(res.body);
+}
 
 static Future placeOrder(Map data) async {
   var res = await http.post(

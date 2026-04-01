@@ -43,7 +43,7 @@ class _AdminScreenState extends State<AdminScreen> {
   }
 
   void fetchOrders() async {
-    var data = await ApiService.getOrders();
+    var data = await ApiService.getallOrders(widget.adminId ?? 1);
     setState(() => orders = data);
   }
 
