@@ -18,7 +18,7 @@ class AdminScreen extends StatefulWidget {
 }
 
 class _AdminScreenState extends State<AdminScreen> {
-  int selectedIndex = 0;
+  int selectedIndex = -1; // 🔥 dashboard first
 
   List orders = [];
   List customers = [];
@@ -26,7 +26,6 @@ class _AdminScreenState extends State<AdminScreen> {
 
   String message = "";
 
-  // ================= PROFILE VARIABLES =================
   TextEditingController nameController = TextEditingController();
   TextEditingController emailController = TextEditingController();
   TextEditingController phoneController = TextEditingController();
@@ -43,8 +42,6 @@ class _AdminScreenState extends State<AdminScreen> {
     fetchProfile();
   }
 
-  // ================= API =================
-
   void fetchOrders() async {
     var data = await ApiService.getOrders();
     setState(() => orders = data);
@@ -60,7 +57,6 @@ class _AdminScreenState extends State<AdminScreen> {
     setState(() => customers = data);
   }
 
-  // ================= PROFILE FETCH =================
   void fetchProfile() async {
     var res = await ApiService.getProfile(widget.adminId ?? 1);
 
@@ -76,7 +72,6 @@ class _AdminScreenState extends State<AdminScreen> {
     }
   }
 
-  // ================= PROFILE UPDATE =================
   void updateProfile() async {
     var res = await ApiService.updateProfile({
       "user_id": widget.adminId,
@@ -103,7 +98,91 @@ class _AdminScreenState extends State<AdminScreen> {
     fetchProducts();
   }
 
-  // ================= UI PAGES =================
+  // 🔥 DASHBOARD GRID
+  Widget dashboardGrid() {
+    List<Map<String, dynamic>> items = [
+      {
+        "icon": Icons.people,
+        "title": "Customers",
+        "index": 0,
+        "count": customers.length,
+      },
+      {
+        "icon": Icons.list,
+        "title": "Orders",
+        "index": 1,
+        "count": orders.length,
+      },
+      {
+        "icon": Icons.inventory,
+        "title": "Products",
+        "index": 2,
+        "count": products.length,
+      },
+      {"icon": Icons.receipt, "title": "Invoice", "index": 3, "count": 0},
+      {"icon": Icons.person, "title": "Profile", "index": 4, "count": 0},
+    ];
+
+    return Padding(
+      padding: EdgeInsets.all(16),
+      child: GridView.builder(
+        itemCount: items.length,
+        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 3,
+          crossAxisSpacing: 12,
+          mainAxisSpacing: 12,
+        ),
+        itemBuilder: (context, i) {
+          var item = items[i];
+
+          return GestureDetector(
+            onTap: () {
+              setState(() {
+                selectedIndex = item["index"];
+              });
+            },
+
+            // 🔥 ANIMATION
+            child: AnimatedContainer(
+              duration: Duration(milliseconds: 200),
+              curve: Curves.easeInOut,
+              decoration: BoxDecoration(
+                color: Colors.grey[100],
+                borderRadius: BorderRadius.circular(15),
+                boxShadow: [
+                  BoxShadow(color: Colors.grey.shade300, blurRadius: 5),
+                ],
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  // ICON
+                  Icon(item["icon"], size: 30, color: Colors.teal),
+
+                  SizedBox(height: 8),
+
+                  // TITLE
+                  Text(
+                    item["title"],
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+
+                  SizedBox(height: 5),
+
+                  // 🔥 COUNT
+                  if (item["count"] > 0)
+                    Text(
+                      "(${item["count"]})",
+                      style: TextStyle(color: Colors.grey, fontSize: 12),
+                    ),
+                ],
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
 
   Widget ordersPage() {
     return ListView.builder(
@@ -178,7 +257,7 @@ class _AdminScreenState extends State<AdminScreen> {
               context,
               MaterialPageRoute(builder: (context) => AddProductScreen()),
             ).then((_) {
-              fetchProducts(); // refresh list after adding
+              fetchProducts();
             });
           },
           child: Text("Add Product"),
@@ -193,31 +272,20 @@ class _AdminScreenState extends State<AdminScreen> {
               try {
                 if (p["image_data"] != null && p["image_data"] != "") {
                   String base64String = p["image_data"];
-
                   base64String = base64String
                       .replaceAll("data:image/jpeg;base64,", "")
                       .replaceAll("data:image/png;base64,", "");
-
                   imageBytes = base64Decode(base64String);
                 }
-              } catch (e) {
-                print("Image decode error: $e");
-              }
+              } catch (e) {}
 
               return Card(
                 child: ListTile(
                   leading: imageBytes != null
-                      ? Image.memory(
-                          imageBytes,
-                          width: 50,
-                          height: 150,
-                          fit: BoxFit.cover,
-                        )
+                      ? Image.memory(imageBytes, width: 50, height: 50)
                       : Icon(Icons.image),
-
                   title: Text(p["name"]),
                   subtitle: Text("₹${p["price"]}"),
-
                   trailing: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
@@ -230,9 +298,7 @@ class _AdminScreenState extends State<AdminScreen> {
                               builder: (context) =>
                                   EditProductScreen(product: p),
                             ),
-                          ).then((_) {
-                            fetchProducts();
-                          });
+                          ).then((_) => fetchProducts());
                         },
                       ),
                       IconButton(
@@ -257,7 +323,6 @@ class _AdminScreenState extends State<AdminScreen> {
     return Center(child: Text("Invoice Coming Soon"));
   }
 
-  // ================= PROFILE PAGE =================
   Widget profilePage() {
     return Padding(
       padding: EdgeInsets.all(20),
@@ -269,46 +334,36 @@ class _AdminScreenState extends State<AdminScreen> {
               color: Colors.green[200],
               child: Text(message),
             ),
-
           TextField(
             controller: nameController,
             decoration: InputDecoration(labelText: "Name"),
           ),
-
           TextField(
             controller: emailController,
             decoration: InputDecoration(labelText: "Email"),
           ),
-
           TextField(
             controller: phoneController,
             decoration: InputDecoration(labelText: "Phone"),
           ),
-
           TextField(
             controller: addressController,
             decoration: InputDecoration(labelText: "Address"),
           ),
-
           SizedBox(height: 20),
-
           ElevatedButton(
             onPressed: updateProfile,
             child: Text("Update Profile"),
           ),
-
-          ElevatedButton(
-            onPressed: () {
-              _logout();
-            },
-            child: Text("Logout"),
-          ),
+          ElevatedButton(onPressed: _logout, child: Text("Logout")),
         ],
       ),
     );
   }
 
   Widget getPage() {
+    if (selectedIndex == -1) return dashboardGrid();
+
     switch (selectedIndex) {
       case 0:
         return customersPage();
@@ -321,38 +376,62 @@ class _AdminScreenState extends State<AdminScreen> {
       case 4:
         return profilePage();
       default:
-        return ordersPage();
+        return dashboardGrid();
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text("Admin Panel"), backgroundColor: Colors.teal),
-      body: getPage(),
-      bottomNavigationBar: BottomNavigationBar(
-        currentIndex: selectedIndex,
-        onTap: (index) {
-          setState(() {
-            selectedIndex = index;
-          });
-        },
-        backgroundColor: Colors.white,
-        selectedItemColor: Colors.teal,
-        unselectedItemColor: Colors.grey,
-        showUnselectedLabels: true,
-        type: BottomNavigationBarType.fixed,
-        items: [
-          BottomNavigationBarItem(icon: Icon(Icons.people), label: "Customers"),
-          BottomNavigationBarItem(icon: Icon(Icons.list), label: "Orders"),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.inventory),
-            label: "Products",
-          ),
-          BottomNavigationBarItem(icon: Icon(Icons.receipt), label: "Invoice"),
-          BottomNavigationBarItem(icon: Icon(Icons.person), label: "Profile"),
+      appBar: AppBar(
+        title: Text("Admin Panel"),
+        backgroundColor: Colors.teal,
+
+        // 🔙 BACK BUTTON
+        leading: selectedIndex != -1
+            ? IconButton(
+                icon: Icon(Icons.arrow_back),
+                onPressed: () {
+                  setState(() {
+                    selectedIndex = -1;
+                  });
+                },
+              )
+            : null,
+
+        // 🏠 HOME BUTTON
+        actions: [
+          if (selectedIndex != -1)
+            IconButton(
+              icon: Icon(Icons.home),
+              onPressed: () {
+                setState(() {
+                  selectedIndex = -1;
+                });
+              },
+            ),
         ],
       ),
+
+      body: getPage(),
+
+      // bottomNavigationBar: BottomNavigationBar(
+      //   currentIndex: selectedIndex < 0 ? 0 : selectedIndex,
+      //   onTap: (index) {
+      //     setState(() {
+      //       selectedIndex = index;
+      //     });
+      //   },
+      //   selectedItemColor: Colors.teal,
+      //   type: BottomNavigationBarType.fixed,
+      //   items: [
+      //     BottomNavigationBarItem(icon: Icon(Icons.people), label: "Customers"),
+      //     BottomNavigationBarItem(icon: Icon(Icons.list), label: "Orders"),
+      //     BottomNavigationBarItem(icon: Icon(Icons.inventory), label: "Products"),
+      //     BottomNavigationBarItem(icon: Icon(Icons.receipt), label: "Invoice"),
+      //     BottomNavigationBarItem(icon: Icon(Icons.person), label: "Profile"),
+      //   ],
+      // ),
     );
   }
 

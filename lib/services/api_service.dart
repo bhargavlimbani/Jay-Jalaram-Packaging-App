@@ -201,17 +201,26 @@ class ApiService {
     return jsonDecode(res.body);
   }
 
-  static Future<Map<String, dynamic>> placeOrder(List items) async {
-    final prefs = await SharedPreferences.getInstance();
+static Future placeOrder(Map data) async {
+  var res = await http.post(
+    Uri.parse("${AppConstants.baseUrl}/orders/place_order.php"),
+    headers: {"Content-Type": "application/json"},
+    body: jsonEncode(data),
+  );
 
-    int userId = prefs.getInt("user_id") ?? 0;
+  return jsonDecode(res.body);
+}
+static Future cancelOrder(int id) async {
+  print("Sending order_id: $id"); 
 
-    var res = await http.post(
-      Uri.parse("${AppConstants.baseUrl}/orders/place_order.php"),
-      headers: {"Content-Type": "application/json"},
-      body: jsonEncode({"items": items, "user_id": userId}),
-    );
+  var res = await http.post(
+    Uri.parse("${AppConstants.baseUrl}/orders/cancel_order.php"),
+    headers: {"Content-Type": "application/json"},
+    body: jsonEncode({"order_id": id}),
+  );
 
-    return jsonDecode(res.body);
-  }
+  print("Response: ${res.body}"); 
+
+  return jsonDecode(res.body);
+}
 }
