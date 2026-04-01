@@ -8,6 +8,7 @@ class CustomerScreen extends StatefulWidget {
   final int userId;
 
   CustomerScreen({required this.userId});
+
   @override
   _CustomerScreenState createState() => _CustomerScreenState();
 }
@@ -25,7 +26,6 @@ class _CustomerScreenState extends State<CustomerScreen> {
   String search = "";
   String selectedCategory = "";
 
-  // ================= PROFILE VARIABLES =================
   TextEditingController nameController = TextEditingController();
   TextEditingController emailController = TextEditingController();
   TextEditingController phoneController = TextEditingController();
@@ -36,10 +36,9 @@ class _CustomerScreenState extends State<CustomerScreen> {
     super.initState();
     fetchProducts();
     fetchOrders();
-    fetchProfile(); // ✅ added
+    fetchProfile();
   }
 
-  // ================= FETCH =================
   void fetchProducts() async {
     var data = await ApiService.getProducts();
     setState(() => products = data);
@@ -50,11 +49,8 @@ class _CustomerScreenState extends State<CustomerScreen> {
     setState(() => orders = data);
   }
 
-  // ================= PROFILE FETCH =================
   void fetchProfile() async {
-    var res = await ApiService.getProfile(
-      widget.userId,
-    ); // ✅ updated to use widget.userId
+    var res = await ApiService.getProfile(widget.userId);
 
     if (res["status"] == "success") {
       var p = res["profile"];
@@ -68,7 +64,6 @@ class _CustomerScreenState extends State<CustomerScreen> {
     }
   }
 
-  // ================= PROFILE UPDATE =================
   void updateProfile() async {
     var res = await ApiService.updateProfile({
       "user_id": widget.userId,
@@ -78,24 +73,25 @@ class _CustomerScreenState extends State<CustomerScreen> {
       "address": addressController.text,
     });
 
-    setState(() {
-      message = res["message"];
-    });
+    setState(() => message = res["message"]);
   }
 
-  // ================= IMAGE =================
-  Widget showImage(String base64String) {
+  // ✅ FIXED IMAGE FUNCTION
+  Widget showImage(String? base64) {
     try {
-      String base64Data = base64String.split(',').last;
-      Uint8List bytes = base64Decode(base64Data);
+      if (base64 == null || base64.isEmpty) {
+        return Icon(Icons.image);
+      }
 
-      return Image.memory(bytes, fit: BoxFit.cover, width: double.infinity);
+      String data = base64.split(',').last;
+      Uint8List bytes = base64Decode(data);
+
+      return Image.memory(bytes, fit: BoxFit.cover);
     } catch (e) {
-      return Icon(Icons.image_not_supported, size: 80);
+      return Icon(Icons.image);
     }
   }
 
-  // ================= CART =================
   void addToCart(product, int qty) {
     setState(() {
       cartItems.add({
@@ -103,14 +99,18 @@ class _CustomerScreenState extends State<CustomerScreen> {
         "name": product["name"],
         "price": double.parse(product["price"].toString()),
         "qty": qty,
+        "image_data": product["image_data"],
       });
-
-      message = "${product["name"]} added";
     });
   }
 
   void placeOrder() async {
-    var res = await ApiService.placeOrder(cartItems);
+    if (cartItems.isEmpty) return;
+
+    var res = await ApiService.placeOrder({
+      "user_id": widget.userId,
+      "items": cartItems,
+    });
 
     setState(() {
       cartItems.clear();
@@ -121,35 +121,39 @@ class _CustomerScreenState extends State<CustomerScreen> {
     fetchOrders();
   }
 
-  // ================= CATEGORY BUTTON =================
-  Widget categoryButton(String title, String value) {
-    return Padding(
-      padding: EdgeInsets.symmetric(horizontal: 5),
-      child: ElevatedButton(
-        style: ElevatedButton.styleFrom(
-          backgroundColor: selectedCategory == value
-              ? Colors.teal
-              : Colors.grey[300],
-        ),
-        onPressed: () {
-          setState(() {
-            selectedCategory = value;
-          });
-        },
-        child: Text(title),
+  void cancelOrder(int orderId) async {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text("Confirm Delete"),
+        content: Text("Are you sure you want to cancel this order?"),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text("No"),
+          ),
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(context);
+
+              var res = await ApiService.cancelOrder(orderId);
+
+              ScaffoldMessenger.of(context)
+                  .showSnackBar(SnackBar(content: Text(res["message"])));
+
+              fetchOrders();
+            },
+            child: Text("Yes", style: TextStyle(color: Colors.red)),
+          ),
+        ],
       ),
     );
   }
 
   // ================= HOME =================
   Widget homePage() {
-    var filteredProducts = products.where((p) {
-      bool matchSearch = p["name"].toLowerCase().contains(search.toLowerCase());
-
-      bool matchCategory =
-          selectedCategory == "" || p["box_type"] == selectedCategory;
-
-      return matchSearch && matchCategory;
+    var filtered = products.where((p) {
+      return (p["name"] ?? "").toLowerCase().contains(search.toLowerCase());
     }).toList();
 
     return Column(
@@ -157,7 +161,6 @@ class _CustomerScreenState extends State<CustomerScreen> {
         if (message.isNotEmpty)
           Container(
             padding: EdgeInsets.all(10),
-            margin: EdgeInsets.all(10),
             color: Colors.green[200],
             child: Text(message),
           ),
@@ -166,106 +169,80 @@ class _CustomerScreenState extends State<CustomerScreen> {
           padding: EdgeInsets.all(10),
           child: TextField(
             decoration: InputDecoration(
-              hintText: "Search boxes...",
+              hintText: "Search...",
               prefixIcon: Icon(Icons.search),
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(20),
-              ),
+              border: OutlineInputBorder(),
             ),
-            onChanged: (value) {
-              setState(() => search = value);
-            },
+            onChanged: (val) => setState(() => search = val),
           ),
         ),
-
-        SingleChildScrollView(
-          scrollDirection: Axis.horizontal,
-          child: Row(
-            children: [
-              categoryButton("All", ""),
-              categoryButton("Carton", "carton-box"),
-              categoryButton("Corrugated", "corrugated-box"),
-              categoryButton("Duplex", "duplex-box"),
-            ],
-          ),
-        ),
-
-        SizedBox(height: 10),
 
         Expanded(
           child: GridView.builder(
-            padding: EdgeInsets.all(10),
             gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
               crossAxisCount: 2,
-              childAspectRatio: 0.60,
-              crossAxisSpacing: 10,
-              mainAxisSpacing: 10,
+              childAspectRatio: 0.6,
             ),
-            itemCount: filteredProducts.length,
-            itemBuilder: (context, index) {
-              var product = filteredProducts[index];
-              int productId = int.parse(product["id"].toString());
+            itemCount: filtered.length,
+            itemBuilder: (context, i) {
+              var p = filtered[i];
+              int id = int.tryParse(p["id"]?.toString() ?? "0") ?? 0;
 
               qtyControllers.putIfAbsent(
-                productId,
-                () => TextEditingController(text: "1"),
-              );
+                  id, () => TextEditingController(text: "1"));
 
               return Card(
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                elevation: 5,
-                child: Padding(
-                  padding: EdgeInsets.all(10),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        child: product["image_data"] != null
-                            ? showImage(product["image_data"])
-                            : Icon(Icons.image),
-                      ),
+                child: Column(
+                  children: [
+                    Expanded(
+                      child: showImage(p["image_data"]?.toString()),
+                    ),
 
-                      SizedBox(height: 5),
+                    Text(p["name"]?.toString() ?? ""),
+                    Text("₹${p["price"]?.toString() ?? "0"}"),
 
-                      Text(
-                        product["name"],
-                        style: TextStyle(fontWeight: FontWeight.bold),
-                      ),
-
-                      Text("₹${product["price"]}"),
-
-                      SizedBox(height: 5),
-
-                      TextField(
-                        controller: qtyControllers[productId],
-                        keyboardType: TextInputType.number,
-                        decoration: InputDecoration(
-                          hintText: "Qty",
-                          isDense: true,
-                          border: OutlineInputBorder(),
+                    Row(
+                      children: [
+                        IconButton(
+                          icon: Icon(Icons.remove),
+                          onPressed: () {
+                            int qty =
+                                int.tryParse(qtyControllers[id]!.text) ?? 1;
+                            if (qty > 1) qty--;
+                            setState(() {
+                              qtyControllers[id]!.text = qty.toString();
+                            });
+                          },
                         ),
-                      ),
-
-                      SizedBox(height: 5),
-
-                      ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.teal,
-                          minimumSize: Size(double.infinity, 40),
+                        Expanded(
+                          child: TextField(
+                            controller: qtyControllers[id],
+                            textAlign: TextAlign.center,
+                          ),
                         ),
-                        onPressed: () {
-                          int qty =
-                              int.tryParse(qtyControllers[productId]!.text) ??
-                              1;
+                        IconButton(
+                          icon: Icon(Icons.add),
+                          onPressed: () {
+                            int qty =
+                                int.tryParse(qtyControllers[id]!.text) ?? 1;
+                            qty++;
+                            setState(() {
+                              qtyControllers[id]!.text = qty.toString();
+                            });
+                          },
+                        ),
+                      ],
+                    ),
 
-                          addToCart(product, qty);
-                        },
-                        child: Text("Order Box"),
-                      ),
-                    ],
-                  ),
+                    ElevatedButton(
+                      onPressed: () {
+                        int qty =
+                            int.tryParse(qtyControllers[id]!.text) ?? 1;
+                        addToCart(p, qty);
+                      },
+                      child: Text("Order Box"),
+                    ),
+                  ],
                 ),
               );
             },
@@ -280,7 +257,7 @@ class _CustomerScreenState extends State<CustomerScreen> {
     double total = 0;
 
     for (var item in cartItems) {
-      total += item["price"] * item["qty"];
+      total += (item["price"] ?? 0) * (item["qty"] ?? 0);
     }
 
     return Column(
@@ -288,25 +265,52 @@ class _CustomerScreenState extends State<CustomerScreen> {
         Expanded(
           child: ListView.builder(
             itemCount: cartItems.length,
-            itemBuilder: (context, index) {
-              var item = cartItems[index];
+            itemBuilder: (context, i) {
+              var item = cartItems[i];
 
-              return ListTile(
-                title: Text(item["name"]),
-                subtitle: Text("Qty: ${item["qty"]}"),
-                trailing: Text("₹${item["price"] * item["qty"]}"),
+              return Dismissible(
+                key: Key(item["product_id"].toString()),
+                background: Container(color: Colors.red),
+                onDismissed: (_) {
+                  setState(() => cartItems.removeAt(i));
+                },
+                child: Card(
+                  child: ListTile(
+                    leading: SizedBox(
+                      width: 60,
+                      height: 60,
+                      child: showImage(item["image_data"]?.toString()),
+                    ),
+                    title: Text(item["name"]?.toString() ?? ""),
+                    subtitle: Row(
+                      children: [
+                        IconButton(
+                          icon: Icon(Icons.remove),
+                          onPressed: () {
+                            setState(() {
+                              if ((item["qty"] ?? 1) > 1) item["qty"]--;
+                            });
+                          },
+                        ),
+                        Text("${item["qty"] ?? 0}"),
+                        IconButton(
+                          icon: Icon(Icons.add),
+                          onPressed: () {
+                            setState(() => item["qty"]++);
+                          },
+                        ),
+                      ],
+                    ),
+                    trailing: Text(
+                        "₹${(item["price"] ?? 0) * (item["qty"] ?? 0)}"),
+                  ),
+                ),
               );
             },
           ),
         ),
 
-        Padding(
-          padding: EdgeInsets.all(10),
-          child: Text(
-            "Total: ₹$total",
-            style: TextStyle(fontWeight: FontWeight.bold),
-          ),
-        ),
+        Text("Total: ₹$total"),
 
         ElevatedButton(
           onPressed: cartItems.isEmpty ? null : placeOrder,
@@ -320,13 +324,60 @@ class _CustomerScreenState extends State<CustomerScreen> {
   Widget ordersPage() {
     return ListView.builder(
       itemCount: orders.length,
-      itemBuilder: (context, index) {
-        var order = orders[index];
+      itemBuilder: (context, i) {
+        var order = orders[i];
+
+        List items = [];
+        try {
+          items = jsonDecode(order["items"] ?? "[]");
+        } catch (e) {}
 
         return Card(
-          child: ListTile(
-            title: Text("Order ID: ${order["id"]}"),
-            subtitle: Text("₹${order["total_price"]}"),
+          child: Padding(
+            padding: EdgeInsets.all(10),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text("Order ID: ${order["id"]?.toString() ?? ""}"),
+                Text("Total: ₹${order["total_price"]?.toString() ?? "0"}"),
+
+                Text(
+                  "Status: ${order["status"]?.toString() ?? ""}",
+                  style: TextStyle(color: Colors.orange),
+                ),
+
+                if (order["status"] == "Pending")
+                  ElevatedButton(
+                    onPressed: () {
+                      cancelOrder(
+                          int.tryParse(order["id"]?.toString() ?? "0") ?? 0);
+                    },
+                    child: Text("Cancel Order"),
+                  ),
+
+                SizedBox(height: 10),
+
+                ...items.map((item) {
+                  return Row(
+                    children: [
+                      SizedBox(
+                        width: 50,
+                        height: 50,
+                        child: showImage(item["image"]?.toString()),
+                      ),
+                      SizedBox(width: 10),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(item["name"]?.toString() ?? ""),
+                          Text("Qty: ${item["quantity"] ?? 0}"),
+                        ],
+                      ),
+                    ],
+                  );
+                }).toList(),
+              ],
+            ),
           ),
         );
       },
@@ -339,50 +390,17 @@ class _CustomerScreenState extends State<CustomerScreen> {
       padding: EdgeInsets.all(20),
       child: Column(
         children: [
-          if (message.isNotEmpty)
-            Container(
-              padding: EdgeInsets.all(10),
-              color: Colors.green[200],
-              child: Text(message),
-            ),
-
-          TextField(
-            controller: nameController,
-            decoration: InputDecoration(labelText: "Name"),
-          ),
-
-          TextField(
-            controller: emailController,
-            decoration: InputDecoration(labelText: "Email"),
-          ),
-
-          TextField(
-            controller: phoneController,
-            decoration: InputDecoration(labelText: "Phone"),
-          ),
-
-          TextField(
-            controller: addressController,
-            decoration: InputDecoration(labelText: "Address"),
-          ),
-
-          SizedBox(height: 20),
-
-          ElevatedButton(
-            onPressed: updateProfile,
-            child: Text("Update Profile"),
-          ),
-
-          ElevatedButton(
-            onPressed: _logout,
-            child: Text("Logout"),
-          ),
+          TextField(controller: nameController),
+          TextField(controller: emailController),
+          TextField(controller: phoneController),
+          TextField(controller: addressController),
+          ElevatedButton(onPressed: updateProfile, child: Text("Update")),
+          ElevatedButton(onPressed: _logout, child: Text("Logout")),
         ],
       ),
     );
   }
 
-  // ================= NAV =================
   Widget getPage() {
     switch (selectedIndex) {
       case 0:
@@ -418,9 +436,7 @@ class _CustomerScreenState extends State<CustomerScreen> {
           BottomNavigationBarItem(icon: Icon(Icons.home), label: "Home"),
           BottomNavigationBarItem(icon: Icon(Icons.list), label: "Orders"),
           BottomNavigationBarItem(
-            icon: Icon(Icons.shopping_cart),
-            label: "Cart",
-          ),
+              icon: Icon(Icons.shopping_cart), label: "Cart"),
           BottomNavigationBarItem(icon: Icon(Icons.person), label: "Profile"),
         ],
       ),
