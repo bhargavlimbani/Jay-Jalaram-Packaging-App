@@ -117,29 +117,22 @@ class ApiService {
     required String stock,
   }) async {
     var request = http.MultipartRequest(
-      'POST',
+      "POST",
       Uri.parse("${AppConstants.baseUrl}/products/add_product.php"),
     );
 
-    request.fields['name'] = name;
-    request.fields['price'] = price;
-    request.fields['box_type'] = boxType;
-    request.fields['description'] = description;
-    request.fields['stock'] = stock;
+    request.fields["name"] = name;
+    request.fields["price"] = price;
+    request.fields["box_type"] = boxType;
+    request.fields["description"] = description;
+    request.fields["stock"] = stock;
 
-    request.files.add(await http.MultipartFile.fromPath('image', imagePath));
+    request.files.add(await http.MultipartFile.fromPath("image", imagePath));
 
     var response = await request.send();
     var res = await http.Response.fromStream(response);
 
-    return jsonDecode(res.body);
-  }
-
-  static Future deleteProduct(int id) async {
-    var res = await http.post(
-      Uri.parse("${AppConstants.baseUrl}/products/delete_product.php"),
-      body: {"id": id.toString()},
-    );
+    print("ADD RESPONSE: ${res.body}");
 
     return jsonDecode(res.body);
   }
@@ -154,23 +147,26 @@ class ApiService {
     String? imagePath,
   }) async {
     var request = http.MultipartRequest(
-      'POST',
+      "POST",
       Uri.parse("${AppConstants.baseUrl}/products/update_product.php"),
     );
 
-    request.fields['id'] = id;
-    request.fields['name'] = name;
-    request.fields['price'] = price;
-    request.fields['box_type'] = boxType;
-    request.fields['description'] = description;
-    request.fields['stock'] = stock;
+    request.fields["id"] = id;
+    request.fields["name"] = name;
+    request.fields["price"] = price;
+    request.fields["box_type"] = boxType;
+    request.fields["description"] = description;
+    request.fields["stock"] = stock;
 
-    if (imagePath != null) {
-      request.files.add(await http.MultipartFile.fromPath('image', imagePath));
+    // 🔥 ONLY ADD IMAGE IF EXISTS
+    if (imagePath != null && imagePath.isNotEmpty) {
+      request.files.add(await http.MultipartFile.fromPath("image", imagePath));
     }
 
     var response = await request.send();
     var res = await http.Response.fromStream(response);
+
+    print(res.body); // 🔥 DEBUG
 
     return jsonDecode(res.body);
   }
@@ -182,17 +178,24 @@ class ApiService {
     return jsonDecode(res.body);
   }
 
-  static Future<Map<String, dynamic>> updateOrderStatus(
-    int orderId,
-    String status,
-  ) async {
-    var res = await http.post(
-      Uri.parse("${AppConstants.baseUrl}/orders/update_order_status.php"),
-      headers: {"Content-Type": "application/json"},
-      body: jsonEncode({"order_id": orderId, "status": status}),
-    );
-    return jsonDecode(res.body);
-  }
+static Future updateOrderStatus(int id, String status) async {
+  var res = await http.post(
+    Uri.parse("${AppConstants.baseUrl}/orders/update_order_status.php"),
+    body: {
+      "order_id": id.toString(),
+      "status": status,
+    },
+  );
+
+  print("STATUS RESPONSE: ${res.body}");
+
+  return jsonDecode(res.body);
+}
+
+static Future getInvoices() async {
+  var res = await http.get(Uri.parse("${AppConstants.baseUrl}/invoices/get_invoices.php"));
+  return jsonDecode(res.body);
+}
 
   static Future<List> getCustomers() async {
     var res = await http.get(
@@ -201,36 +204,48 @@ class ApiService {
     return jsonDecode(res.body);
   }
 
-static Future getorders(int userId) async {
-  var res = await http.post(
-    Uri.parse("${AppConstants.baseUrl}/orders/get_orders.php"),
-    headers: {"Content-Type": "application/json"},
-    body: jsonEncode({"user_id": userId}),
-  );
+  static Future getorders(int userId) async {
+    var res = await http.post(
+      Uri.parse("${AppConstants.baseUrl}/orders/get_orders.php"),
+      headers: {"Content-Type": "application/json"},
+      body: jsonEncode({"user_id": userId}),
+    );
 
-  return jsonDecode(res.body);
-}
+    return jsonDecode(res.body);
+  }
 
-static Future placeOrder(Map data) async {
-  var res = await http.post(
-    Uri.parse("${AppConstants.baseUrl}/orders/place_order.php"),
-    headers: {"Content-Type": "application/json"},
-    body: jsonEncode(data),
-  );
+  static Future placeOrder(Map data) async {
+    var res = await http.post(
+      Uri.parse("${AppConstants.baseUrl}/orders/place_order.php"),
+      headers: {"Content-Type": "application/json"},
+      body: jsonEncode(data),
+    );
 
-  return jsonDecode(res.body);
-}
-static Future cancelOrder(int id) async {
-  print("Sending order_id: $id"); 
+    return jsonDecode(res.body);
+  }
 
-  var res = await http.post(
-    Uri.parse("${AppConstants.baseUrl}/orders/cancel_order.php"),
-    headers: {"Content-Type": "application/json"},
-    body: jsonEncode({"order_id": id}),
-  );
+  static Future cancelOrder(int id) async {
+    print("Sending order_id: $id");
 
-  print("Response: ${res.body}"); 
+    var res = await http.post(
+      Uri.parse("${AppConstants.baseUrl}/orders/cancel_order.php"),
+      headers: {"Content-Type": "application/json"},
+      body: jsonEncode({"order_id": id}),
+    );
 
-  return jsonDecode(res.body);
-}
+    print("Response: ${res.body}");
+
+    return jsonDecode(res.body);
+  }
+
+  static Future deleteProduct(int id) async {
+    var res = await http.post(
+      Uri.parse("${AppConstants.baseUrl}/products/delete_product.php"),
+      body: {"id": id.toString()},
+    );
+
+    print("DELETE RESPONSE: ${res.body}");
+
+    return jsonDecode(res.body);
+  }
 }
