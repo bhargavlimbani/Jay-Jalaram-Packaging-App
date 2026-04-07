@@ -19,6 +19,14 @@ class _CustomerScreenState extends State<CustomerScreen> {
   List products = [];
   List orders = [];
   List cartItems = [];
+  List categories = [
+    "All",
+    "Carton Box",
+    "Corrugated Box",
+    "Printed Corrugated Box",
+    "Duplex Box",
+    "Custom Order",
+  ];
 
   Map<int, TextEditingController> qtyControllers = {};
 
@@ -44,10 +52,10 @@ class _CustomerScreenState extends State<CustomerScreen> {
     setState(() => products = data);
   }
 
-void fetchOrders() async {
-  var data = await ApiService.getorders(widget.userId); // 🔥 IMPORTANT
-  setState(() => orders = data);
-}
+  void fetchOrders() async {
+    var data = await ApiService.getorders(widget.userId); // 🔥 IMPORTANT
+    setState(() => orders = data);
+  }
 
   void fetchProfile() async {
     var res = await ApiService.getProfile(widget.userId);
@@ -138,8 +146,9 @@ void fetchOrders() async {
 
               var res = await ApiService.cancelOrder(orderId);
 
-              ScaffoldMessenger.of(context)
-                  .showSnackBar(SnackBar(content: Text(res["message"])));
+              ScaffoldMessenger.of(
+                context,
+              ).showSnackBar(SnackBar(content: Text(res["message"])));
 
               fetchOrders();
             },
@@ -153,7 +162,20 @@ void fetchOrders() async {
   // ================= HOME =================
   Widget homePage() {
     var filtered = products.where((p) {
-      return (p["name"] ?? "").toLowerCase().contains(search.toLowerCase());
+      bool matchSearch = (p["name"] ?? "").toLowerCase().contains(
+        search.toLowerCase(),
+      );
+
+      // 🔥 ALL = no filter
+      if (selectedCategory.isEmpty || selectedCategory == "All") {
+        return matchSearch;
+      }
+
+      // 🔥 TYPE FILTER
+      String dbType = (p["box_type"] ?? "").toLowerCase();
+      String selected = selectedCategory.toLowerCase().replaceAll(" ", "-");
+
+      return matchSearch && dbType == selected;
     }).toList();
 
     return Column(
@@ -176,6 +198,43 @@ void fetchOrders() async {
             onChanged: (val) => setState(() => search = val),
           ),
         ),
+        // 🔥 CATEGORY LIST
+        Container(
+          height: 60,
+          child: ListView.builder(
+            scrollDirection: Axis.horizontal,
+            itemCount: categories.length,
+            itemBuilder: (context, index) {
+              String cat = categories[index];
+
+              bool isSelected = selectedCategory == cat;
+
+              return GestureDetector(
+                onTap: () {
+                  setState(() {
+                    selectedCategory = cat;
+                  });
+                },
+                child: Container(
+                  margin: EdgeInsets.symmetric(horizontal: 8),
+                  padding: EdgeInsets.symmetric(horizontal: 16),
+                  decoration: BoxDecoration(
+                    color: isSelected ? Colors.teal : Colors.grey.shade200,
+                    borderRadius: BorderRadius.circular(20),
+                  ),
+                  alignment: Alignment.center,
+                  child: Text(
+                    cat,
+                    style: TextStyle(
+                      color: isSelected ? Colors.white : Colors.black,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
 
         Expanded(
           child: GridView.builder(
@@ -189,14 +248,14 @@ void fetchOrders() async {
               int id = int.tryParse(p["id"]?.toString() ?? "0") ?? 0;
 
               qtyControllers.putIfAbsent(
-                  id, () => TextEditingController(text: "1"));
+                id,
+                () => TextEditingController(text: "1"),
+              );
 
               return Card(
                 child: Column(
                   children: [
-                    Expanded(
-                      child: showImage(p["image_data"]?.toString()),
-                    ),
+                    Expanded(child: showImage(p["image_data"]?.toString())),
 
                     Text(p["name"]?.toString() ?? ""),
                     Text("₹${p["price"]?.toString() ?? "0"}"),
@@ -236,8 +295,7 @@ void fetchOrders() async {
 
                     ElevatedButton(
                       onPressed: () {
-                        int qty =
-                            int.tryParse(qtyControllers[id]!.text) ?? 1;
+                        int qty = int.tryParse(qtyControllers[id]!.text) ?? 1;
                         addToCart(p, qty);
                       },
                       child: Text("Order Box"),
@@ -302,7 +360,8 @@ void fetchOrders() async {
                       ],
                     ),
                     trailing: Text(
-                        "₹${(item["price"] ?? 0) * (item["qty"] ?? 0)}"),
+                      "₹${(item["price"] ?? 0) * (item["qty"] ?? 0)}",
+                    ),
                   ),
                 ),
               );
@@ -350,7 +409,8 @@ void fetchOrders() async {
                   ElevatedButton(
                     onPressed: () {
                       cancelOrder(
-                          int.tryParse(order["id"]?.toString() ?? "0") ?? 0);
+                        int.tryParse(order["id"]?.toString() ?? "0") ?? 0,
+                      );
                     },
                     child: Text("Cancel Order"),
                   ),
@@ -392,9 +452,7 @@ void fetchOrders() async {
         prefixIcon: Icon(icon),
         filled: true,
         fillColor: Colors.grey.shade100,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-        ),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide(color: Colors.grey.shade300),
@@ -515,7 +573,9 @@ void fetchOrders() async {
           BottomNavigationBarItem(icon: Icon(Icons.home), label: "Home"),
           BottomNavigationBarItem(icon: Icon(Icons.list), label: "Orders"),
           BottomNavigationBarItem(
-              icon: Icon(Icons.shopping_cart), label: "Cart"),
+            icon: Icon(Icons.shopping_cart),
+            label: "Cart",
+          ),
           BottomNavigationBarItem(icon: Icon(Icons.person), label: "Profile"),
         ],
       ),
