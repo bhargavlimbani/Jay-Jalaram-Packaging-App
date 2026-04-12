@@ -175,30 +175,21 @@ class _AdminScreenState extends State<AdminScreen> {
     });
   }
 
-  void updateStatus(int id, String status, Map order) async {
-    print("CALL API: ID=$id STATUS=$status");
+void updateStatus(int id, String status, Map order, String comment) async {
+  var res = await ApiService.updateOrderStatus(id, status, comment);
 
-    var res = await ApiService.updateOrderStatus(id, status);
+  if (res["status"] == "success") {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(res["message"])),
+    );
 
-    print("API RESPONSE: $res");
-
-    if (res["status"] == "success") {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(res["message"])));
-
-      fetchOrders();
-
-      // 🔥 AUTO INVOICE WHEN COMPLETED
-      if (status == "Completed") {
-        generateInvoiceAndShare(order);
-      }
-    } else {
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text(res["message"])));
-    }
+    fetchOrders();
+  } else {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(res["message"])),
+    );
   }
+}
 
   void deleteProduct(int id) async {
     await ApiService.deleteProduct(id);
@@ -305,64 +296,110 @@ void generateInvoiceAndShare(Map order) async {
     );
   }
 
-  Widget ordersPage() {
-    return ListView.builder(
-      itemCount: orders.length,
-      itemBuilder: (context, i) {
-        var o = orders[i];
+Widget ordersPage() {
+  return ListView.builder(
+    itemCount: orders.length,
+    itemBuilder: (context, i) {
+      var o = orders[i];
 
-        return Card(
-          margin: EdgeInsets.all(10),
-          child: Padding(
-            padding: EdgeInsets.all(10),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
+      return Card(
+        margin: EdgeInsets.all(10),
+        child: Padding(
+          padding: EdgeInsets.all(10),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                "Order #${o["id"]}",
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              Text("Customer: ${o["customer_name"]}"),
+              Text("Total: ₹${o["total_price"]}"),
+              Text("Status: ${o["status"]}"),
+
+              // 🔥 SHOW ADMIN COMMENT IF EXISTS
+              if (o["admin_comment"] != null &&
+                  o["admin_comment"].toString().isNotEmpty)
                 Text(
-                  "Order #${o["id"]}",
-                  style: TextStyle(fontWeight: FontWeight.bold),
+                  "Comment: ${o["admin_comment"]}",
+                  style: TextStyle(color: Colors.red),
                 ),
-                Text("Customer: ${o["customer_name"]}"),
-                Text("Total: ₹${o["total_price"]}"),
-                Text("Status: ${o["status"]}"),
-                SizedBox(height: 10),
-                Row(
-                  children: [
-                    ElevatedButton(
-                      onPressed: () => updateStatus(
-                        int.parse(o["id"].toString()),
-                        "Accepted",
-                        o,
-                      ),
-                      child: Text("Accept"),
-                    ),
 
-                    ElevatedButton(
-                      onPressed: () => updateStatus(
-                        int.parse(o["id"].toString()),
-                        "Rejected",
-                        o,
-                      ),
-                      child: Text("Reject"),
-                    ),
+              SizedBox(height: 10),
 
-                    ElevatedButton(
-                      onPressed: () => updateStatus(
-                        int.parse(o["id"].toString()),
-                        "Completed",
-                        o,
-                      ),
-                      child: Text("Complete"),
+              Row(
+                children: [
+
+                  // ✅ ACCEPT
+                  ElevatedButton(
+                    onPressed: () => updateStatus(
+                      int.parse(o["id"].toString()),
+                      "Accepted",
+                      o,
+                      "",
                     ),
-                  ],
-                ),
-              ],
-            ),
+                    child: Text("Accept"),
+                  ),
+
+                  SizedBox(width: 5),
+
+                  // ❌ REJECT WITH COMMENT
+                  ElevatedButton(
+                    onPressed: () {
+                      TextEditingController c =
+                          TextEditingController();
+
+                      showDialog(
+                        context: context,
+                        builder: (_) => AlertDialog(
+                          title: Text("Reject Reason"),
+                          content: TextField(
+                            controller: c,
+                            decoration: InputDecoration(
+                              hintText: "Enter reason",
+                            ),
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () {
+                                updateStatus(
+                                  int.parse(o["id"].toString()),
+                                  "Rejected",
+                                  o,
+                                  c.text,
+                                );
+                                Navigator.pop(context);
+                              },
+                              child: Text("Submit"),
+                            ),
+                          ],
+                        ),
+                      );
+                    },
+                    child: Text("Reject"),
+                  ),
+
+                  SizedBox(width: 5),
+
+                  // 🔵 COMPLETE
+                  ElevatedButton(
+                    onPressed: () => updateStatus(
+                      int.parse(o["id"].toString()),
+                      "Completed",
+                      o,
+                      "",
+                    ),
+                    child: Text("Complete"),
+                  ),
+                ],
+              ),
+            ],
           ),
-        );
-      },
-    );
-  }
+        ),
+      );
+    },
+  );
+}
 
   Widget customersPage() {
     return ListView.builder(
