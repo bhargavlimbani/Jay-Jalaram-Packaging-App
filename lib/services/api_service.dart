@@ -178,24 +178,21 @@ class ApiService {
     return jsonDecode(res.body);
   }
 
-static Future updateOrderStatus(int id, String status) async {
-  var res = await http.post(
-    Uri.parse("${AppConstants.baseUrl}/orders/update_order_status.php"),
-    body: {
-      "order_id": id.toString(),
-      "status": status,
-    },
-  );
+  static Future updateOrderStatus(int id, String status, String comment) async {
+    var res = await http.post(
+      Uri.parse("${AppConstants.baseUrl}/orders/update_order_status.php"),
+      body: {"order_id": id.toString(), "status": status, "comment": comment},
+    );
 
-  print("STATUS RESPONSE: ${res.body}");
+    return jsonDecode(res.body);
+  }
 
-  return jsonDecode(res.body);
-}
-
-static Future getInvoices() async {
-  var res = await http.get(Uri.parse("${AppConstants.baseUrl}/invoices/get_invoices.php"));
-  return jsonDecode(res.body);
-}
+  static Future getInvoices() async {
+    var res = await http.get(
+      Uri.parse("${AppConstants.baseUrl}/invoices/get_invoices.php"),
+    );
+    return jsonDecode(res.body);
+  }
 
   static Future<List> getCustomers() async {
     var res = await http.get(
@@ -204,7 +201,7 @@ static Future getInvoices() async {
     return jsonDecode(res.body);
   }
 
-  static Future getorders(int userId) async {
+  static Future getOrders(int userId) async {
     var res = await http.post(
       Uri.parse("${AppConstants.baseUrl}/orders/get_orders.php"),
       headers: {"Content-Type": "application/json"},

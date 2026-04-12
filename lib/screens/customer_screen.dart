@@ -13,6 +13,8 @@ class CustomerScreen extends StatefulWidget {
   _CustomerScreenState createState() => _CustomerScreenState();
 }
 
+
+
 class _CustomerScreenState extends State<CustomerScreen> {
   int selectedIndex = 0;
 
@@ -52,10 +54,13 @@ class _CustomerScreenState extends State<CustomerScreen> {
     setState(() => products = data);
   }
 
-  void fetchOrders() async {
-    var data = await ApiService.getorders(widget.userId); // 🔥 IMPORTANT
-    setState(() => orders = data);
-  }
+void fetchOrders() async {
+  var res = await ApiService.getOrders(widget.userId);
+
+  setState(() {
+    orders = res["data"]; // 🔥 IMPORTANT CHANGE
+  });
+}
 
   void fetchProfile() async {
     var res = await ApiService.getProfile(widget.userId);
@@ -380,69 +385,135 @@ class _CustomerScreenState extends State<CustomerScreen> {
   }
 
   // ================= ORDERS =================
-  Widget ordersPage() {
-    return ListView.builder(
-      itemCount: orders.length,
-      itemBuilder: (context, i) {
-        var order = orders[i];
+Widget ordersPage() {
+  return ListView.builder(
+    itemCount: orders.length,
+    itemBuilder: (context, i) {
+      var order = orders[i];
 
-        List items = [];
-        try {
-          items = jsonDecode(order["items"] ?? "[]");
-        } catch (e) {}
+      // 🔥 SAFE ITEMS (already decoded OR string)
+      List items = [];
+      try {
+        if (order["items"] is String) {
+          items = jsonDecode(order["items"]);
+        } else if (order["items"] is List) {
+          items = order["items"];
+        }
+      } catch (e) {
+        items = [];
+      }
 
-        return Card(
-          child: Padding(
-            padding: EdgeInsets.all(10),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text("Order ID: ${order["id"]?.toString() ?? ""}"),
-                Text("Total: ₹${order["total_price"]?.toString() ?? "0"}"),
+      return Card(
+        margin: EdgeInsets.all(10),
+        child: Padding(
+          padding: EdgeInsets.all(10),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
 
-                Text(
-                  "Status: ${order["status"]?.toString() ?? ""}",
-                  style: TextStyle(color: Colors.orange),
+              // 🧾 ORDER INFO
+              Text("Order ID: ${order["id"] ?? ""}"),
+              Text("Total: ₹${order["total_price"] ?? "0"}"),
+
+              Text(
+                "Status: ${order["status"] ?? ""}",
+                style: TextStyle(
+                  color: order["status"] == "Rejected"
+                      ? Colors.red
+                      : order["status"] == "Accepted"
+                          ? Colors.green
+                          : Colors.orange,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+
+              // 🔴 ADMIN COMMENT (NEW)
+              if (order["admin_comment"] != null &&
+                  order["admin_comment"].toString().isNotEmpty)
+                Padding(
+                  padding: EdgeInsets.only(top: 5),
+                  child: Text(
+                    "Admin: ${order["admin_comment"]}",
+                    style: TextStyle(
+                      color: Colors.red,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
                 ),
 
-                if (order["status"] == "Pending")
-                  ElevatedButton(
-                    onPressed: () {
-                      cancelOrder(
-                        int.tryParse(order["id"]?.toString() ?? "0") ?? 0,
-                      );
-                    },
-                    child: Text("Cancel Order"),
-                  ),
+              // ❌ CANCEL BUTTON
+              if (order["status"] == "Pending")
+                ElevatedButton(
+                  onPressed: () {
+                    cancelOrder(
+                      int.tryParse(order["id"].toString()) ?? 0,
+                    );
+                  },
+                  child: Text("Cancel Order"),
+                ),
 
-                SizedBox(height: 10),
+              SizedBox(height: 10),
 
-                ...items.map((item) {
-                  return Row(
+              // 📦 ITEMS LIST
+              ...items.map((item) {
+                return Padding(
+                  padding: EdgeInsets.only(bottom: 10),
+                  child: Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      SizedBox(
-                        width: 50,
-                        height: 50,
-                        child: showImage(item["image"]?.toString()),
-                      ),
-                      SizedBox(width: 10),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(item["name"]?.toString() ?? ""),
-                          Text("Qty: ${item["quantity"] ?? 0}"),
-                        ],
+
+                      // 🖼 IMAGE FIX
+                      if (item["image"] != null &&
+                          item["image"].toString().isNotEmpty)
+                        Container(
+                          width: 60,
+                          height: 60,
+                          margin: EdgeInsets.only(right: 10),
+                          child: Image.memory(
+                            base64Decode(
+                              item["image"]
+                                  .toString()
+                                  .split(",")
+                                  .last,
+                            ),
+                            fit: BoxFit.cover,
+                          ),
+                        ),
+
+                      // 📄 DETAILS
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment:
+                              CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              item["name"]?.toString() ?? "",
+                              style: TextStyle(
+                                  fontWeight: FontWeight.bold),
+                            ),
+                            Text(
+                                "Qty: ${item["quantity"] ?? 0}"),
+                          ],
+                        ),
                       ),
                     ],
-                  );
-                }).toList(),
-              ],
-            ),
+                  ),
+                );
+              }).toList(),
+
+              // 📦 CUSTOM ORDER INFO
+              if (order["order_type"] == "custom")
+                Text(
+                  "Custom Size: ${order["box_length"]} x ${order["box_width"]} x ${order["box_height"]}",
+                  style: TextStyle(color: Colors.blue),
+                ),
+            ],
           ),
-        );
-      },
-    );
-  }
+        ),
+      );
+    },
+  );
+}
 
   // ================= PROFILE =================
   Widget profilePage() {
