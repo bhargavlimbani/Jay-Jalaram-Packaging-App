@@ -105,17 +105,31 @@ void fetchOrders() async {
     }
   }
 
-  void addToCart(product, int qty) {
-    setState(() {
-      cartItems.add({
-        "product_id": product["id"],
-        "name": product["name"],
-        "price": double.parse(product["price"].toString()),
-        "qty": qty,
-        "image_data": product["image_data"],
-      });
+void addToCart(product, int qty) {
+  setState(() {
+    cartItems.add({
+      "product_id": product["id"],
+      "name": product["name"],
+      "price": double.parse(product["price"].toString()),
+      "qty": qty,
+      "image_data": product["image_data"],
     });
-  }
+  });
+
+  // ✅ Snackbar
+  ScaffoldMessenger.of(context).showSnackBar(
+    SnackBar(
+      content: Text("Item added to cart"),
+      action: SnackBarAction(
+        label: "Go to Cart",
+        textColor: Colors.yellow,
+        onPressed: () {
+          setState(() => selectedIndex = 2);
+        },
+      ),
+    ),
+  );
+}
 
   void placeOrder() async {
     if (cartItems.isEmpty) return;
@@ -631,6 +645,58 @@ Widget ordersPage() {
         title: Text("Hello Customer"),
         backgroundColor: Colors.teal,
       ),
+      drawer: Drawer(
+    child: ListView(
+      padding: EdgeInsets.zero,
+      children: [
+        DrawerHeader(
+          decoration: BoxDecoration(color: Colors.teal),
+          child: Text(
+            "Menu",
+            style: TextStyle(color: Colors.white, fontSize: 20),
+          ),
+        ),
+
+        ListTile(
+          leading: Icon(Icons.home),
+          title: Text("Home"),
+          onTap: () {
+            setState(() => selectedIndex = 0);
+            Navigator.pop(context);
+          },
+        ),
+
+        ListTile(
+          leading: Icon(Icons.list),
+          title: Text("Orders"),
+          onTap: () {
+            setState(() => selectedIndex = 1);
+            Navigator.pop(context);
+          },
+        ),
+
+        ListTile(
+          leading: Icon(Icons.shopping_cart),
+          title: Text("Cart"),
+          onTap: () {
+            setState(() => selectedIndex = 2);
+            Navigator.pop(context);
+          },
+        ),
+
+        ListTile(
+          leading: Icon(Icons.person),
+          title: Text("Profile"),
+          onTap: () {
+            setState(() => selectedIndex = 3);
+            Navigator.pop(context);
+          },
+        ),
+      ],
+    ),
+  ),
+
+  
       body: getPage(),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: selectedIndex,
