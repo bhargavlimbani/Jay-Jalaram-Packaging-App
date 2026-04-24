@@ -194,6 +194,20 @@ class ApiService {
     return jsonDecode(res.body);
   }
 
+  static Future createInvoice(int orderId) async {
+    var res = await http.post(
+      Uri.parse("${AppConstants.baseUrl}/invoices/create_invoice.php"),
+      headers: {"Content-Type": "application/json"},
+      body: jsonEncode({"order_id": orderId}),
+    );
+    return jsonDecode(res.body);
+  }
+
+  static String getInvoiceDownloadUrl(int invoiceId) {
+    return "${AppConstants.baseUrl}/invoices/download_invoice.php?invoice_id=$invoiceId";
+  }
+
+
   static Future<List> getCustomers() async {
     var res = await http.get(
       Uri.parse("${AppConstants.baseUrl}/auth/get_customers.php"),

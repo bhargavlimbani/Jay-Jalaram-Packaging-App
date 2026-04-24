@@ -4,6 +4,7 @@ import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
 import 'package:jay_jalaram_packaging/admin_information/customer_detail_screen.dart';
+import 'package:jay_jalaram_packaging/utils/constants.dart';
 import '../services/api_service.dart';
 import '../admin_information/add_product.dart';
 import '../admin_information/edit_product.dart';
@@ -78,7 +79,24 @@ class _AdminScreenState extends State<AdminScreen> {
   }
 
   String _pickInvoiceUrl(Map data) {
-    return _pickValue(data, ["pdf_url", "invoice_url", "file_url", "url"]);
+    final directUrl = _pickValue(
+      data,
+      ["pdf_url", "invoice_url", "file_url", "url"],
+    );
+    if (directUrl.isNotEmpty) {
+      if (directUrl.startsWith("http://") || directUrl.startsWith("https://")) {
+        return directUrl;
+      }
+      final cleanPath = directUrl.startsWith("/") ? directUrl.substring(1) : directUrl;
+      return "${AppConstants.baseUrl}/$cleanPath";
+    }
+
+    final invoiceId = int.tryParse(_pickValue(data, ["id", "invoice_id"]));
+    if (invoiceId != null) {
+      return ApiService.getInvoiceDownloadUrl(invoiceId);
+    }
+
+    return "";
   }
 
   Future<void> _openUrl(String url) async {
@@ -179,8 +197,23 @@ void updateStatus(int id, String status, Map order, String comment) async {
   var res = await ApiService.updateOrderStatus(id, status, comment);
 
   if (res["status"] == "success") {
+    String snackMessage = res["message"] ?? "Order updated";
+
+    if (status == "Completed") {
+      final invoiceRes = await ApiService.createInvoice(id);
+
+      if (invoiceRes["status"] == "success") {
+        snackMessage =
+            "${res["message"] ?? "Order completed"}\n${invoiceRes["message"] ?? "Invoice generated"}";
+        fetchInvoices();
+      } else {
+        snackMessage =
+            "${res["message"] ?? "Order completed"}\nInvoice error: ${invoiceRes["message"] ?? "Unable to generate invoice"}";
+      }
+    }
+
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(res["message"])),
+      SnackBar(content: Text(snackMessage)),
     );
 
     fetchOrders();
